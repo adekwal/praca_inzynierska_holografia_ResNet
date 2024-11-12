@@ -1,58 +1,66 @@
 import numpy as np
 
-
 def propagate_plane_wave(uin, z, n0, lambda_, dx, dy):
-    """
-        Propagate an optical field along the optical axis in a homogenous medium
-        using the angular spectrum method.
 
-        Wykorzystanie metody spektrum kątowego do symulacji propagacji fali optycznej w jednorodnym ośrodku
+    Ny, Nx = uin.shape
+    k = 2 * np.pi / lambda_
 
-        IN:
-        uin - pole wejściowe dla 'z'=0
-        z - odległość propagacji
-        n0 - współczynnik załamania ośrodka
-        lambda - długość fali
-        dx, dy - interwały próbkowania
+    # Dokładnie odwzorowana siatka częstotliwości zgodna z MATLAB-em
+    dfx = 1 / (Nx * dx)
+    fx = np.concatenate((np.arange(0, Nx // 2), np.arange(-Nx // 2, 0))) * dfx
+    dfy = 1 / (Ny * dy)
+    fy = np.concatenate((np.arange(0, Ny // 2), np.arange(-Ny // 2, 0))) * dfy
 
-        OUT:
-        uout - pole wyjściowe w odległości 'z'
-        """
-    Ny, Nx = uin.shape # przechowuje wymiary pola wejściowego w pixelach
-    k = 2 * np.pi / lambda_ # liczba falowa
-
-    dfx = 1 / (Nx * dx) # rozdzielczość częstotliwości w kierunku 'x'
-    fx = np.fft.fftfreq(Nx, d=dx) # częstotliwość próbkowania w kierunku 'x'
-
-    dfy = 1 / (Ny * dy) # rozdzielczość częstotliwości w kierunku 'y'
-    fy = np.fft.fftfreq(Ny, d=dy) # częstotliwość próbkowania w kierunku 'y'
-
-    Fx, Fy = np.meshgrid(fx, fy) # siatka częstości pozwala na operacje w domenie częstotliwości
-
+    Fx, Fy = np.meshgrid(fx, fy)
 
     if z < 0:
         uin = np.conj(uin)
 
+    FTu = np.fft.fft2(uin)
 
-    FTu = np.fft.fft2(uin) # dwuwymiarowa transformacja fouriera na polu wejściowym
-
-    Kernel = np.exp(1j * k * abs(z) * np.real(np.sqrt(n0 ** 2 - lambda_ ** 2 * (Fx ** 2 + Fy ** 2))))
-    Kernel[n0 ** 2 < lambda_ ** 2 * (Fx ** 2 + Fy ** 2)] = 0
+    Kernel = np.exp(1j * k * abs(z) * np.real(np.sqrt(n0**2 - lambda_**2 * (Fx**2 + Fy**2))))
+    Kernel[n0**2 < lambda_**2 * (Fx**2 + Fy**2)] = 0
 
     FTu *= Kernel
 
-    uout = np.fft.ifft2(FTu) # odrotna dwuwymiarowa transformacja fouriera
+    uout = np.fft.ifft2(FTu)
 
     if z < 0:
         uout = np.conj(uout)
 
     return uout
 
-
 '''
-uout - macierz liczb zespolonych, liczby reprezentują amplitudę i fazę w różnych punktach przestrzeni dla 'z'
-wymiary uout będą takie same jak wymiary pola wejściowego (Nx, Ny)
-wartości przedstawiają jak pole optyczne zmienia się po propagacji na odległość 'z'
-w czasie propagacji mogą zachodzić zjawiska takie jak: rozpraszanie, interferencja, zmiana kształtu
-'''
+import math
+import numpy as np
 
+
+def propagate_plane_wave(ui, z, n0, lambda_, dx, dy):
+
+    k = 2 * math.pi / lambda_
+    Ny, Nx = ui.shape
+    dfx = 1 / (Nx * dx)
+    dfy = 1 / (Ny * dy)
+    fx = np.fft.fftshift(np.arange(Nx) -Nx / 2) * dfx
+    fy = np.fft.fftshift(np.arange(Ny) - Ny / 2) * dfy
+    fx2 = fx ** 2
+    fy2 = fy ** 2
+
+    fy2_2d = np.dot(np.ones([Nx, 1]), fy2[np.newaxis])
+    fx2_2d = np.dot(fx2[:, np.newaxis], np.ones([1, Ny]))
+    under_sqrt = np.power(n0, 2) - np.power(lambda_, 2) * (fx2_2d + fy2_2d)
+
+    under_sqrt[under_sqrt < 0] = 0
+    phase_kernel = k * np.abs(z) * np.sqrt(under_sqrt)
+
+    if z < 0:
+        ui = np.conj(ui)
+
+    ftu = np.fft.fft2(ui) * np.exp(1j * phase_kernel)
+    uo = np.fft.ifft2(ftu)
+
+    if z < 0:
+        uo = np.conj(uo)
+
+    return uo
+'''
