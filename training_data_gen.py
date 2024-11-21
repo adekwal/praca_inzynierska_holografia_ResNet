@@ -37,7 +37,6 @@ def generate_data(ph0, delta_ph_max, z1, z2, lambda_, dx, nx, ny, px, py):
     ph0 = ph0 - np.median(ph0)
     u_obj = np.exp(1j * ph0)
 
-
     ## Simulation of two defocused intensity measurements
     u1 = propagate_plane_wave(u_obj, z1, 1, lambda_, dx, dx)
     u2 = propagate_plane_wave(u_obj, z2, 1, lambda_, dx, dx)
@@ -46,6 +45,15 @@ def generate_data(ph0, delta_ph_max, z1, z2, lambda_, dx, nx, ny, px, py):
     i1 = np.abs(u1)**2
     i2 = np.abs(u2)**2
     ph1 = np.angle(u1)
+
+    # Cropping and storing data
+    i1 = i1[int(py / 2 - ny / 2): int(py / 2 + ny / 2), int(px / 2 - nx / 2): int(px / 2 + nx / 2)]
+    i2 = i2[int(py / 2 - ny / 2): int(py / 2 + ny / 2), int(px / 2 - nx / 2): int(px / 2 + nx / 2)]
+    ph1 = ph1[int(py / 2 - ny / 2): int(py / 2 + ny / 2), int(px / 2 - nx / 2): int(px / 2 + nx / 2)]
+    ph0 = ph0[int(py / 2 - ny / 2): int(py / 2 + ny / 2), int(px / 2 - nx / 2): int(px / 2 + nx / 2)]
+
+    ph0 -= np.median(ph0)
+    ph1 -= np.median(ph1)
 
     return i1, i2, ph1, ph0
 

@@ -14,7 +14,6 @@ py = 1024
 dx = 2.4
 dy = dx
 n0 = 1
-# lambda_ = 0.561
 lambda_ = 0.1
 delta_z = 8e3
 z1 = 3.5e3
@@ -29,13 +28,11 @@ do_you_want_to_print_your_result = False # change it if you want to show images
 print(lambda_ * delta_z < min([px, py]) * dx * dx)
 print(lambda_ * z2 < min([px, py]) * dx * dx)
 
-
 ## Initial configurations
-inputs = np.zeros((ny, nx, 1, img_count))
-targets = np.zeros((ny, nx, 1, img_count))
-phase1 = np.zeros((ny, nx, 1, img_count))
-phase0 = np.zeros((ny, nx, 1, img_count))
-
+inputs = []
+targets = []
+phase1 = []
+phase0 = []
 
 ## Generate GS data
 img_total_no = 0
@@ -50,27 +47,20 @@ for i_dir in directories:
         if img_total_no > img_count:
             break
 
-        # load image
+        # Load image
         img = imageio.imread(os.path.join(data_path, i_dir, img_files[i_img])).astype(float)
         i1, i2, ph1, ph0 = generate_data(img, delta_ph_max, z1, z2, lambda_, dx, nx, ny, px, py)
 
-        i1 = i1[int(py / 2 - ny / 2): int(py / 2 + ny / 2), int(px / 2 - nx / 2): int(px / 2 + nx / 2)]
-        i2 = i2[int(py / 2 - ny / 2): int(py / 2 + ny / 2), int(px / 2 - nx / 2): int(px / 2 + nx / 2)]
-        ph1 = ph1[int(py / 2 - ny / 2): int(py / 2 + ny / 2), int(px / 2 - nx / 2): int(px / 2 + nx / 2)]
-        ph0 = ph0[int(py / 2 - ny / 2): int(py / 2 + ny / 2), int(px / 2 - nx / 2): int(px / 2 + nx / 2)]
-
-        inputs[:, :, 0, img_total_no-1] = i1
-        targets[:, :, 0, img_total_no-1] = i2
-        phase1[:, :, 0, img_total_no-1] = ph1
-        phase0[:, :, 0, img_total_no-1] = ph0
-
-        ph0 -= np.median(ph0)
-        ph1 -= np.median(ph1)
-
-        i_range = [np.min(i1), np.max(i1)]
-        ph_range = [np.min(ph0), np.max(ph0)]
+        # Append the processed image data to their respective lists, adding a new axis to match the desired shape
+        inputs.append(i1[..., np.newaxis])
+        targets.append(i2[..., np.newaxis])
+        phase1.append(ph1[..., np.newaxis])
+        phase0.append(ph0[..., np.newaxis])
 
         if do_you_want_to_print_your_result:
+            i_range = [np.min(i1), np.max(i1)]
+            ph_range = [np.min(ph0), np.max(ph0)]
+
             plt.figure(1, figsize=(10, 6))
             plt.clf()
             plt.suptitle(f'Image #{img_total_no}')
@@ -98,6 +88,12 @@ for i_dir in directories:
             plt.pause(1)
 
         print(img_total_no)
+
+# Conversion of lists to NumPy arrays
+inputs = np.stack(inputs, axis=-1)
+targets = np.stack(targets, axis=-1)
+phase1 = np.stack(phase1, axis=-1)
+phase0 = np.stack(phase0, axis=-1)
 
 np.savez('training_data.npz', inputs=inputs, targets=targets, phase0=phase0, phase1=phase1)
 print("\ndone")
