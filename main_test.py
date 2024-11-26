@@ -91,10 +91,10 @@ for i_dir in training_dirs:
         print(img_total_no)
 
 # Conversion of lists to NumPy arrays
-inputs = np.stack(inputs, axis=-1)
-targets = np.stack(targets, axis=-1)
-phase1 = np.stack(phase1, axis=-1)
-phase0 = np.stack(phase0, axis=-1)
+inputs = np.stack(inputs, axis=0)
+targets = np.stack(targets, axis=0)
+phase1 = np.stack(phase1, axis=0)
+phase0 = np.stack(phase0, axis=0)
 
 # Save data
 np.savez('training_data.npz', inputs=inputs, targets=targets, phase0=phase0, phase1=phase1)
