@@ -7,13 +7,13 @@ source:
 https://github.com/christianversloot/machine-learning-articles/blob/main/how-to-build-a-resnet-from-scratch-with-tensorflow-2-and-keras.md
 how to get Tesnorboard type in terminal: python -m tensorboard.main --logdir=logs/
 """
-
 import os
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 import numpy as np
 import tensorflow
 from tensorflow.image import flip_up_down
 from tensorflow.keras import Model
-from tensorflow.keras.datasets import cifar10
 from tensorflow.keras.utils import plot_model
 from tensorflow.keras.layers import Add, GlobalAveragePooling2D, \
     Conv2D, Lambda, Input, BatchNormalization, Activation, MaxPool2D, UpSampling2D
@@ -24,51 +24,59 @@ import matplotlib.pyplot as plt
 import shutil
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
+# Global variable to store the dataset
+global_dataset = None
 
 def model_configuration():
     """
     Get configuration variables for the model.
     """
+    global global_dataset  # Use the global dataset variable
 
-    # Load dataset for computing dataset size
-    (input_train, input_labels, *rest) = load_dataset()
+    # Ensure the dataset is loaded
+    if global_dataset is None:
+        load_dataset()
 
-    # Generic config
+    # Access inputs from the global dataset
+    inputs = global_dataset["inputs"]
+
+    # Generic configuration
     width, height, channels = 512, 512, 1
     batch_size = 1
-    validation_split = 0.2  # 45/5 per the He et al. paper
+    validation_split = 0.2  # Validation split ratio (e.g., 20%)
     verbose = 1
-    n = 3  # number of residual blocks in a single group
-    init_fm_dim = 16  # initial number of feature maps; the number doubles when the feature map size halves.
-    shortcut_type = "identity"  # or: projection
+    n = 3  # Number of residual blocks in a single group
+    init_fm_dim = 16  # Initial number of feature maps; doubles as the feature map size halves
+    shortcut_type = "identity"  # Shortcut type: "identity" or "projection"
 
     # Dataset size
-    train_size = (1 - validation_split) * len(input_train)
-    val_size = validation_split * len(input_train)
+    train_size = (1 - validation_split) * len(inputs)  # Training dataset size
+    val_size = validation_split * len(inputs)  # Validation dataset size
 
-    # Number of steps per epoch is dependent on batch size
-    maximum_number_iterations = 32000  # per the He et al. paper
-    # steps_per_epoch = np.ceil(train_size / batch_size).astype(int)
-    steps_per_epoch = int(train_size / batch_size)
-    # val_steps_per_epoch = np.ceil(val_size / batch_size).astype(int)
-    val_steps_per_epoch = int(val_size / batch_size)
-    # epochs = tensorflow.cast(tensorflow.math.ceil(maximum_number_iterations / steps_per_epoch), dtype=tensorflow.int64)
-    epochs = int(maximum_number_iterations / steps_per_epoch)
+    # Calculate steps per epoch based on dataset size and batch size
+    maximum_number_iterations = 320  # Maximum number of iterations as per the paper
+    steps_per_epoch = np.ceil(train_size / batch_size).astype(int)
+    val_steps_per_epoch = np.ceil(val_size / batch_size).astype(int)
+    epochs = tensorflow.cast(
+        tensorflow.math.ceil(maximum_number_iterations / steps_per_epoch),
+        dtype=tensorflow.int64
+    )
 
-    # Define loss function
+    # Define the loss function
     loss = tensorflow.keras.losses.MeanSquaredError()
 
-    # Set layer init
+    # Set layer initializer
     initializer = tensorflow.keras.initializers.HeNormal()
 
-    # Define optimizer
+    # Define the optimizer
     lr_schedule = ExponentialDecay(
         initial_learning_rate=5e-2,
         decay_steps=10000,
-        decay_rate=0.9)
+        decay_rate=0.9
+    )
     optimizer = Adam(learning_rate=lr_schedule)
 
-    # Load Tensorboard callback
+    # TensorBoard callback for monitoring
     tensorboard = TensorBoard(
         os.path.join(os.getcwd(), "logs"),
         histogram_freq=1,
@@ -77,21 +85,21 @@ def model_configuration():
         update_freq='epoch'
     )
 
-    # Save a model checkpoint after every epoch
+    # Model checkpoint callback for saving weights
     checkpoint = ModelCheckpoint(
         os.path.join(os.getcwd(), "model_checkpoint.keras"),
         save_freq="epoch"
     )
 
-    # Add callbacks to list
+    # Add callbacks to a list
     callbacks = [
         tensorboard,
         checkpoint
     ]
 
-    # Create config dictionary
+    # Create configuration dictionary
     config = {
-        "epochs": epochs, # new word added
+        "epochs": epochs,
         "width": width,
         "height": height,
         "dim": channels,
@@ -116,16 +124,17 @@ def model_configuration():
 
 def load_dataset():
     """
-    Load the dataset from an .npz file containing inputs and targets.
+    Load the dataset from an .npz file into a global variable.
 
-    Parameters:
-    - file_path (str): Path to the .npz file.
+    The function assigns the inputs and targets to the global variable `global_dataset`.
 
-    Returns:
-    - tuple: A tuple containing:
-        - inputs (numpy array): Array of input images or data.
-        - targets (numpy array): Array of target images or data.
+    Raises:
+        - FileNotFoundError: If the dataset file is not found.
+        - KeyError: If required keys are missing in the .npz file.
+        - RuntimeError: If another error occurs during loading.
     """
+    global global_dataset  # Declare the global variable
+
     try:
         # Load the .npz file
         data = np.load("C:/Users/Monika Walocha/Desktop/adek files/_python/praca_inzynierska/training_data_NOWE_40.npz")
@@ -134,66 +143,21 @@ def load_dataset():
         inputs = data['inputs']
         targets = data['targets']
 
-        # Ensure data consistency (optional)
+        # Ensure data consistency
         if inputs.shape[0] != targets.shape[0]:
             raise ValueError("Number of inputs and targets do not match.")
 
-        print(f"Loaded dataset: {inputs.shape[0]} samples.")
-        return inputs, targets
+        # Assign to the global variable
+        global_dataset = {"inputs": inputs, "targets": targets}
+
+        print(f"Loaded dataset: {inputs.shape[0]} samples into global_dataset.")
 
     except FileNotFoundError:
-        raise FileNotFoundError(f"The file was not found.")
+        raise FileNotFoundError("The dataset file was not found.")
     except KeyError as e:
         raise KeyError(f"Missing expected data key in the file: {e}")
     except Exception as e:
         raise RuntimeError(f"An error occurred while loading the dataset: {e}")
-
-
-# def preprocessed_dataset():
-#     """
-#     Load and preprocess the CIFAR-10 dataset.
-#     """
-#     inputs, targets = load_dataset()
-#
-#     # (input_train, target_train), (input_test, target_test) = load_dataset()
-#
-#     train_dataset = tensorflow.data.Dataset.from_tensor_slices((inputs, targets))
-#     train_dataset = train_dataset.shuffle(buffer_size=inputs.shape[0]).batch(1).prefetch(
-#         buffer_size=tensorflow.data.experimental.AUTOTUNE)
-#
-#     # input_train = input_train[:, :, :, 0]
-#     # input_test = input_test[:, :, :, 0]
-#     # input_train = input_train[:, :, :, np.newaxis]
-#     # input_test = input_test[:, :, :, np.newaxis]
-#
-#     config = model_configuration()
-#
-#     # Data generator for training data
-#     train_generator = tensorflow.keras.preprocessing.image.ImageDataGenerator(
-#         validation_split=config.get("validation_split"),
-#         horizontal_flip=True,
-#         rescale=1. / 255
-#         # preprocessing_function=tensorflow.keras.applications.resnet50.preprocess_input
-#     )
-#     target_train = flip_up_down(input_train)
-#     target_test = flip_up_down(input_test)
-#
-#     # Generate training and validation batches
-#     train_batches = train_generator.flow(input_train, target_train, batch_size=config.get("batch_size"),
-#                                          subset="training")
-#     validation_batches = train_generator.flow(input_train, target_train, batch_size=config.get("batch_size"),
-#                                               subset="validation")
-#
-#     # Data generator for testing data
-#     test_generator = tensorflow.keras.preprocessing.image.ImageDataGenerator(
-#         # preprocessing_function=tensorflow.keras.applications.resnet50.preprocess_input,
-#         rescale=1. / 255
-#         )
-#
-#     # Generate test batches
-#     test_batches = test_generator.flow(input_test, target_test, batch_size=config.get("batch_size"))
-#
-#     return train_batches, validation_batches, test_batches
 
 
 def preprocessed_dataset():
@@ -205,8 +169,15 @@ def preprocessed_dataset():
     - validation_dataset: Dataset for validation.
     - test_dataset: Dataset for testing.
     """
-    # Load the dataset
-    inputs, targets = load_dataset()
+    global global_dataset  # Use the global dataset variable
+
+    # Ensure the dataset is loaded
+    if global_dataset is None:
+        load_dataset()
+
+    # Access inputs and targets from the global dataset
+    inputs = global_dataset["inputs"]
+    targets = global_dataset["targets"]
 
     # Get configuration
     config = model_configuration()
@@ -386,7 +357,7 @@ def train_model(model, train_batches, validation_batches):
                   callbacks=config.get("callbacks"),
                   # steps_per_epoch=config.get("steps_per_epoch"),
                   validation_data=validation_batches,
-                  # validation_steps=config.get("val_steps_per_epoch"))
+                  # validation_steps=config.get("val_steps_per_epoch")
                          )
 
     loss = hist_obj.history['loss']
