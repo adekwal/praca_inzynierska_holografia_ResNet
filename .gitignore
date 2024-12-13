@@ -234,6 +234,7 @@ cython_debug/
 # mat-files
 *.mat
 *.h5
+*.npz
 
 # training
 logs
