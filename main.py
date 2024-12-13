@@ -5,7 +5,7 @@ import imageio.v2 as imageio
 from training_data_gen import generate_data
 
 ## Define simulation parameters
-data_path = r"C:\Users\Monika Walocha\Desktop\adek files\_python\praca_inzynierska\flowers"
+data_path = r"C:\Users\jw\Desktop\projekty\praca_MC\GS_DNN\training_data\flowers"
 training_dirs = ['daisy', 'dandelion', 'rose', 'sunflower', 'tulip']
 nx = int(1024 / 2)
 ny = int(1024 / 2)
@@ -19,7 +19,7 @@ delta_z = 8e3
 z1 = 3.5e3
 z2 = z1 + delta_z
 delta_ph_max = np.pi / 2
-img_count = 1000
+img_count = 20# 4242
 
 ## Define user setup
 do_you_want_to_print_your_result = False # change it if you want to show images
