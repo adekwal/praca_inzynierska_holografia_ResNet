@@ -42,8 +42,6 @@ img_total_no = 0
 
 # List all image files in the specified directory
 img_files = [f for f in os.listdir(data_path) if os.path.isfile(os.path.join(data_path, f))]
-
-# Limit to `img_count` images
 img_files = img_files[:img_count]
 
 # Process each image

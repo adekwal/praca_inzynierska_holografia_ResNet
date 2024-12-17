@@ -351,26 +351,13 @@ def train_model(model, train_batches, validation_batches):
 
     # Fit data to model
     hist_obj = model.fit(train_batches,
-                  batch_size=config.get("batch_size"),
-                  epochs=config.get("num_epochs"),
-                  verbose=config.get("verbose"),
-                  callbacks=config.get("callbacks"),
-                  # steps_per_epoch=config.get("steps_per_epoch"),
-                  validation_data=validation_batches,
-                  # validation_steps=config.get("val_steps_per_epoch")
+                         batch_size=config.get("batch_size"),
+                         epochs=config.get("num_epochs"),
+                         verbose=config.get("verbose"),
+                         callbacks=config.get("callbacks"),
+                         validation_data=validation_batches,
                          )
-
-    loss = hist_obj.history['loss']
-    val_loss = hist_obj.history['val_loss']
-    plt.plot(np.log(loss), label='Training Loss')
-    plt.plot(np.log(val_loss), label='Validation Loss')
-    plt.legend(loc='upper right')
-    plt.ylabel('Log loss')
-    plt.title('Training and Validation Loss')
-    plt.xlabel('epoch')
-    plt.show()
-
-    return model
+    return model, hist_obj
 
 
 def evaluate_model(model, test_batches):
@@ -380,6 +367,30 @@ def evaluate_model(model, test_batches):
     # Evaluate model
     score = model.evaluate(test_batches, verbose=1)
     print(f'Test loss: {score}')
+
+
+def show_training_progress(hist_obj):
+    config = model_configuration()
+    loss = hist_obj.history['loss']
+    val_loss = hist_obj.history['val_loss']
+    epochs = range(1,len(loss)+1)
+
+    try:
+        # Try to access and plot loss per iteration
+        with open("trained_models\\train_losses", "rb") as fp:
+            train_loss_per_batch = pickle.load(fp)
+        iters = range(1, len(train_loss_per_batch) + 1)
+        plt.plot(iters, np.log(train_loss_per_batch),'b', label='Training Loss')
+    except:
+        print("An exception occurred")
+
+    plt.plot(epochs * config["steps_per_epoch"], np.log(loss), 'bo', label='Training Loss per epoch')
+    plt.plot(epochs * config["steps_per_epoch"], np.log(val_loss), 'ro', label='Validation Loss per epoch')
+    plt.legend(loc='upper right')
+    plt.ylabel('Log loss')
+    plt.title('Training and Validation Loss')
+    plt.xlabel('epoch')
+    plt.show()
 
 
 def training_process():
@@ -399,10 +410,16 @@ def training_process():
     resnet = init_model()
 
     # Train ResNet model
-    trained_resnet = train_model(resnet, train_batches, validation_batches)
+    trained_resnet, history = train_model(resnet, train_batches, validation_batches)
+
+    show_training_progress(history)
+
+    # save trained network
+    #trained_resnet.save_weights('trained_net.weights.h5')
 
     # Evaluate trained ResNet model post training
     evaluate_model(trained_resnet, test_batches)
+
 
 if __name__ == "__main__":
     training_process()
