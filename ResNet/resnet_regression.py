@@ -18,14 +18,14 @@ from tensorflow.keras.utils import plot_model
 from tensorflow.keras.layers import Add, GlobalAveragePooling2D, \
     Conv2D, Lambda, Input, BatchNormalization, Activation, MaxPool2D, UpSampling2D
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
+from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint, Callback
 from keras.optimizers.schedules import ExponentialDecay
 import matplotlib.pyplot as plt
 import shutil
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-
+import pickle
 # Global variable to store the dataset
 global_dataset = None
+
 
 def model_configuration():
     """
@@ -54,9 +54,9 @@ def model_configuration():
     val_size = validation_split * len(inputs)  # Validation dataset size
 
     # Calculate steps per epoch based on dataset size and batch size
-    maximum_number_iterations = 320  # Maximum number of iterations as per the paper
+    maximum_number_iterations = 50  # Maximum number of iterations as per the paper
     steps_per_epoch = np.ceil(train_size / batch_size).astype(int)
-    val_steps_per_epoch = np.ceil(val_size / batch_size).astype(int)
+    #val_steps_per_epoch = np.ceil(val_size / batch_size).astype(int)
     epochs = tensorflow.cast(
         tensorflow.math.ceil(maximum_number_iterations / steps_per_epoch),
         dtype=tensorflow.int64
@@ -87,14 +87,29 @@ def model_configuration():
 
     # Model checkpoint callback for saving weights
     checkpoint = ModelCheckpoint(
-        os.path.join(os.getcwd(), "model_checkpoint.keras"),
+        os.path.join(os.getcwd(), 'trained_models\epoch_{epoch:02d}_model_checkpoint.keras'),
         save_freq="epoch"
     )
+
+    class SaveBatchLoss(Callback):
+        def on_train_begin(self, logs={}):
+            self.train_losses = []
+
+        def on_train_batch_end(self, batch, logs={}):
+            self.train_losses.append(logs.get('loss'))
+
+        def on_train_end(self, logs={}):
+            with open("trained_models\\train_losses", "wb") as fp:  # Pickling
+                pickle.dump(self.train_losses, fp)
+
+
+    save_batch_loss = SaveBatchLoss()
 
     # Add callbacks to a list
     callbacks = [
         tensorboard,
-        checkpoint
+        checkpoint,
+        save_batch_loss
     ]
 
     # Create configuration dictionary
@@ -110,7 +125,7 @@ def model_configuration():
         "initial_num_feature_maps": init_fm_dim,
         "training_ds_size": train_size,
         "steps_per_epoch": steps_per_epoch,
-        "val_steps_per_epoch": val_steps_per_epoch,
+    #    "val_steps_per_epoch": val_steps_per_epoch,
         "num_epochs": epochs,
         "loss": loss,
         "optim": optimizer,
@@ -137,7 +152,7 @@ def load_dataset():
 
     try:
         # Load the .npz file
-        data = np.load("C:/Users/Monika Walocha/Desktop/adek files/_python/praca_inzynierska/training_data_NOWE_40.npz")
+        data = np.load("C:/Users/jw/Desktop/dyplomy/Adam Walocha/AdamWalochaGitRep/praca_inzynierska_ResNet/training_data.npz")
 
         # Extract the inputs and targets
         inputs = data['inputs']
@@ -351,12 +366,13 @@ def train_model(model, train_batches, validation_batches):
 
     # Fit data to model
     hist_obj = model.fit(train_batches,
-                         batch_size=config.get("batch_size"),
-                         epochs=config.get("num_epochs"),
-                         verbose=config.get("verbose"),
-                         callbacks=config.get("callbacks"),
-                         validation_data=validation_batches,
-                         )
+                  batch_size=config.get("batch_size"),
+                  epochs=config.get("num_epochs"),
+                  verbose=config.get("verbose"),
+                  callbacks=config.get("callbacks"),
+                  validation_data=validation_batches,
+                  )
+
     return model, hist_obj
 
 
