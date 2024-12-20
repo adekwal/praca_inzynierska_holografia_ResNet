@@ -4,10 +4,10 @@ def propagate_plane_wave(uin, z, n0, wavelength, dx, dy):
     Ny, Nx = uin.shape
     k = 2 * np.pi / wavelength
 
-    dfx = 1 / (Nx * dx)
-    dfy = 1 / (Ny * dy)
-    fx = np.fft.fftshift(np.fft.fftfreq(Nx, d=dx))
-    fy = np.fft.fftshift(np.fft.fftfreq(Ny, d=dy))
+    #dfx = 1 / (Nx * dx)
+    #dfy = 1 / (Ny * dy)
+    fx = np.fft.fftfreq(Nx, d=dx)
+    fy = np.fft.fftfreq(Ny, d=dy)
 
     Fx, Fy = np.meshgrid(fx, fy)
 
