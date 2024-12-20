@@ -1,1 +1,1 @@
-# GenerateTrainingData_29.10
+# Phase reconstruction using a ResNet network
