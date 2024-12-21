@@ -12,9 +12,7 @@ os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
 import numpy as np
 import tensorflow
-from tensorflow.image import flip_up_down
 from tensorflow.keras import Model
-from tensorflow.keras.utils import plot_model
 from tensorflow.keras.layers import Add, GlobalAveragePooling2D, \
     Conv2D, Lambda, Input, BatchNormalization, Activation, MaxPool2D, UpSampling2D
 from tensorflow.keras.optimizers import Adam
@@ -22,41 +20,42 @@ from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint, Callback
 from keras.optimizers.schedules import ExponentialDecay
 import matplotlib.pyplot as plt
 import shutil
+import h5py
 import pickle
-# Global variable to store the dataset
+
+dataset_file = r"C:/Users/Monika Walocha/Desktop/adek files/_python/praca_inzynierska/dane50_compressed.h5"
 global_dataset = None
+
+def get_dataset_size(file_path):
+    with h5py.File(file_path, 'r') as h5f:
+        dataset = h5f['inputs']
+        return dataset.shape[0]
 
 
 def model_configuration():
-    """
-    Get configuration variables for the model.
-    """
-    global global_dataset  # Use the global dataset variable
+    global global_dataset  # use the global dataset variable
 
     # Ensure the dataset is loaded
     if global_dataset is None:
         load_dataset()
 
-    # Access inputs from the global dataset
-    inputs = global_dataset["inputs"]
-
     # Generic configuration
     width, height, channels = 512, 512, 1
     batch_size = 1
-    validation_split = 0.2  # Validation split ratio (e.g., 20%)
+    validation_split = 0.2
     verbose = 1
-    n = 3  # Number of residual blocks in a single group
-    init_fm_dim = 16  # Initial number of feature maps; doubles as the feature map size halves
-    shortcut_type = "identity"  # Shortcut type: "identity" or "projection"
+    n = 3  # number of residual blocks in a single group
+    init_fm_dim = 16  # initial number of feature maps; doubles as the feature map size halves
+    shortcut_type = "identity"  # shortcut type: "identity" or "projection"
 
-    # Dataset size
-    train_size = (1 - validation_split) * len(inputs)  # Training dataset size
-    val_size = validation_split * len(inputs)  # Validation dataset size
+    num_samples = get_dataset_size(dataset_file)
+    train_size = (1 - validation_split) * num_samples
+    val_size = validation_split * num_samples
 
-    # Calculate steps per epoch based on dataset size and batch size
-    maximum_number_iterations = 50  # Maximum number of iterations as per the paper
+    # Calculate parameters
+    maximum_number_iterations = 160  # maximum number of iterations as per the paper (32000)
     steps_per_epoch = np.ceil(train_size / batch_size).astype(int)
-    #val_steps_per_epoch = np.ceil(val_size / batch_size).astype(int)
+    val_steps_per_epoch = np.ceil(val_size / batch_size).astype(int)
     epochs = tensorflow.cast(
         tensorflow.math.ceil(maximum_number_iterations / steps_per_epoch),
         dtype=tensorflow.int64
@@ -87,21 +86,18 @@ def model_configuration():
 
     # Model checkpoint callback for saving weights
     checkpoint = ModelCheckpoint(
-        os.path.join(os.getcwd(), 'trained_models\epoch_{epoch:02d}_model_checkpoint.keras'),
+        os.path.join(os.getcwd(), r'trained_models\epoch_{epoch:02d}_model_checkpoint.keras'),
         save_freq="epoch"
     )
 
     class SaveBatchLoss(Callback):
         def on_train_begin(self, logs={}):
             self.train_losses = []
-
         def on_train_batch_end(self, batch, logs={}):
             self.train_losses.append(logs.get('loss'))
-
         def on_train_end(self, logs={}):
-            with open("trained_models\\train_losses", "wb") as fp:  # Pickling
+            with open("trained_models\\train_losses", "wb") as fp:  # pickling
                 pickle.dump(self.train_losses, fp)
-
 
     save_batch_loss = SaveBatchLoss()
 
@@ -125,7 +121,7 @@ def model_configuration():
         "initial_num_feature_maps": init_fm_dim,
         "training_ds_size": train_size,
         "steps_per_epoch": steps_per_epoch,
-    #    "val_steps_per_epoch": val_steps_per_epoch,
+        "val_steps_per_epoch": val_steps_per_epoch,
         "num_epochs": epochs,
         "loss": loss,
         "optim": optimizer,
@@ -138,34 +134,18 @@ def model_configuration():
 
 
 def load_dataset():
-    """
-    Load the dataset from an .npz file into a global variable.
-
-    The function assigns the inputs and targets to the global variable `global_dataset`.
-
-    Raises:
-        - FileNotFoundError: If the dataset file is not found.
-        - KeyError: If required keys are missing in the .npz file.
-        - RuntimeError: If another error occurs during loading.
-    """
-    global global_dataset  # Declare the global variable
+    global global_dataset
 
     try:
-        # Load the .npz file
-        data = np.load("C:/Users/jw/Desktop/dyplomy/Adam Walocha/AdamWalochaGitRep/praca_inzynierska_ResNet/training_data.npz")
+        h5f = h5py.File(dataset_file, "r")
 
-        # Extract the inputs and targets
-        inputs = data['inputs']
-        targets = data['targets']
+        if 'inputs' not in h5f or 'targets' not in h5f:
+            raise KeyError("Missing 'inputs' or 'targets' datasets in the HDF5 file.")
 
-        # Ensure data consistency
-        if inputs.shape[0] != targets.shape[0]:
-            raise ValueError("Number of inputs and targets do not match.")
+        global_dataset = {"inputs": h5f['inputs'], "targets": h5f['targets']} # use lazy loading to create an object
 
-        # Assign to the global variable
-        global_dataset = {"inputs": inputs, "targets": targets}
-
-        print(f"Loaded dataset: {inputs.shape[0]} samples into global_dataset.")
+        num_samples = global_dataset['inputs'].shape[0]
+        print(f"Loaded dataset: {num_samples} samples into global_dataset.")
 
     except FileNotFoundError:
         raise FileNotFoundError("The dataset file was not found.")
@@ -175,50 +155,73 @@ def load_dataset():
         raise RuntimeError(f"An error occurred while loading the dataset: {e}")
 
 
+def data_generator(inputs, targets, batch_size):
+    total_samples = inputs.shape[0]
+
+    for start_idx in range(0, total_samples, batch_size):
+        end_idx = min(start_idx + batch_size, total_samples)
+        batch_inputs = inputs[start_idx:end_idx]
+        batch_targets = targets[start_idx:end_idx]
+        yield batch_inputs, batch_targets
+
+
 def preprocessed_dataset():
-    """
-    Preprocess and split the dataset into training, validation, and test sets.
+    global global_dataset
 
-    Returns:
-    - train_dataset: Dataset for training.
-    - validation_dataset: Dataset for validation.
-    - test_dataset: Dataset for testing.
-    """
-    global global_dataset  # Use the global dataset variable
-
-    # Ensure the dataset is loaded
     if global_dataset is None:
         load_dataset()
 
-    # Access inputs and targets from the global dataset
     inputs = global_dataset["inputs"]
     targets = global_dataset["targets"]
-
-    # Get configuration
     config = model_configuration()
     validation_split = config["validation_split"]
     batch_size = config["batch_size"]
 
-    # Calculate split indices
+    # Calculate set size
     total_samples = len(inputs)
-    val_size = int(total_samples * validation_split)
-    train_size = total_samples - val_size
+    val_test_size = int(total_samples * validation_split)
+    val_size = val_test_size // 2
+    train_size = total_samples - val_test_size
 
-    # Split dataset
-    train_inputs, val_inputs = inputs[:train_size], inputs[train_size:]
-    train_targets, val_targets = targets[:train_size], targets[train_size:]
+    # Calculate the indices for dataset splitting
+    train_indices = range(0, train_size)
+    val_indices = range(train_size, train_size + val_size)
+    test_indices = range(train_size + val_size, total_samples)
 
-    # Create TensorFlow datasets
-    train_dataset = tensorflow.data.Dataset.from_tensor_slices((train_inputs, train_targets))
-    validation_dataset = tensorflow.data.Dataset.from_tensor_slices((val_inputs, val_targets))
+    # Define generators
+    train_gen = lambda: data_generator(inputs[train_indices], targets[train_indices], batch_size)
+    val_gen = lambda: data_generator(inputs[val_indices], targets[val_indices], batch_size)
+    test_gen = lambda: data_generator(inputs[test_indices], targets[test_indices], batch_size)
 
-    # Shuffle, batch, and prefetch datasets
-    train_dataset = train_dataset.shuffle(train_size).batch(batch_size).prefetch(buffer_size=tensorflow.data.AUTOTUNE)
-    validation_dataset = validation_dataset.batch(batch_size).prefetch(buffer_size=tensorflow.data.AUTOTUNE)
+    # Create TensorFlow sets
+    train_dataset = tensorflow.data.Dataset.from_generator(
+        train_gen,
+        output_signature=(
+            tensorflow.TensorSpec(shape=(None,) + inputs.shape[1:], dtype=inputs.dtype),
+            tensorflow.TensorSpec(shape=(None,) + targets.shape[1:], dtype=targets.dtype),
+        )
+    )
 
-    # Use the last part of the training set as the test set
-    test_dataset = validation_dataset.take(val_size // 2)
-    validation_dataset = validation_dataset.skip(val_size // 2)
+    validation_dataset = tensorflow.data.Dataset.from_generator(
+        val_gen,
+        output_signature=(
+            tensorflow.TensorSpec(shape=(None,) + inputs.shape[1:], dtype=inputs.dtype),
+            tensorflow.TensorSpec(shape=(None,) + targets.shape[1:], dtype=targets.dtype),
+        )
+    )
+
+    test_dataset = tensorflow.data.Dataset.from_generator(
+        test_gen,
+        output_signature=(
+            tensorflow.TensorSpec(shape=(None,) + inputs.shape[1:], dtype=inputs.dtype),
+            tensorflow.TensorSpec(shape=(None,) + targets.shape[1:], dtype=targets.dtype),
+        )
+    )
+
+    # Prepare datasets
+    train_dataset = train_dataset.shuffle(buffer_size=1024).repeat().prefetch(tensorflow.data.AUTOTUNE)
+    validation_dataset = validation_dataset.repeat().prefetch(tensorflow.data.AUTOTUNE)
+    test_dataset = test_dataset.prefetch(tensorflow.data.AUTOTUNE)
 
     return train_dataset, validation_dataset, test_dataset
 
@@ -358,11 +361,6 @@ def train_model(model, train_batches, validation_batches):
 
     # Get model configuration
     config = model_configuration()
-    ##########################################################################################
-    # train_batches = train_batches.shuffle(buffer_size=1000).repeat()
-    # train_batches = train_batches.repeat(config.get("epochs"))
-    # train_batches = train_batches.repeat()
-    ##########################################################################################
 
     # Fit data to model
     hist_obj = model.fit(train_batches,
@@ -370,8 +368,20 @@ def train_model(model, train_batches, validation_batches):
                   epochs=config.get("num_epochs"),
                   verbose=config.get("verbose"),
                   callbacks=config.get("callbacks"),
+                  steps_per_epoch=config.get("steps_per_epoch"), #
                   validation_data=validation_batches,
-                  )
+                  validation_steps=config.get("val_steps_per_epoch") #
+                         )
+
+    # loss = hist_obj.history['loss']
+    # val_loss = hist_obj.history['val_loss']
+    # plt.plot(np.log(loss), label='Training Loss')
+    # plt.plot(np.log(val_loss), label='Validation Loss')
+    # plt.legend(loc='upper right')
+    # plt.ylabel('Log loss')
+    # plt.title('Training and Validation Loss')
+    # plt.xlabel('epoch')
+    # plt.show()
 
     return model, hist_obj
 
@@ -384,13 +394,11 @@ def evaluate_model(model, test_batches):
     score = model.evaluate(test_batches, verbose=1)
     print(f'Test loss: {score}')
 
-
 def show_training_progress(hist_obj):
     config = model_configuration()
     loss = hist_obj.history['loss']
     val_loss = hist_obj.history['val_loss']
     epochs = range(1,len(loss)+1)
-
     try:
         # Try to access and plot loss per iteration
         with open("trained_models\\train_losses", "rb") as fp:
@@ -399,7 +407,6 @@ def show_training_progress(hist_obj):
         plt.plot(iters, np.log(train_loss_per_batch),'b', label='Training Loss')
     except:
         print("An exception occurred")
-
     plt.plot(epochs * config["steps_per_epoch"], np.log(loss), 'bo', label='Training Loss per epoch')
     plt.plot(epochs * config["steps_per_epoch"], np.log(val_loss), 'ro', label='Validation Loss per epoch')
     plt.legend(loc='upper right')
@@ -417,7 +424,7 @@ def training_process():
     # Get dataset
     train_batches, validation_batches, test_batches = preprocessed_dataset()
 
-    # Preport directory for logs
+    # Prepare directory for logs
     log_dir = os.path.join(os.getcwd(), "logs")
     if os.path.exists(log_dir) and os.path.isdir(log_dir):
          shutil.rmtree(log_dir)
@@ -429,9 +436,6 @@ def training_process():
     trained_resnet, history = train_model(resnet, train_batches, validation_batches)
 
     show_training_progress(history)
-
-    # save trained network
-    #trained_resnet.save_weights('trained_net.weights.h5')
 
     # Evaluate trained ResNet model post training
     evaluate_model(trained_resnet, test_batches)
