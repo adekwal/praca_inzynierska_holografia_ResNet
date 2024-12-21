@@ -23,9 +23,9 @@ delta_ph_max = np.pi / 2
 # Define user setup
 output_file = 'dane'  # define the filename
 img_count = 50  # choose the number of images you want to process
-save_as_npz = False
+save_as_npz = False # choose the valid datafile format
 save_as_h5 = True
-save_disc_space = False  # compress data file
+save_disc_space = False  # compress data file if needed
 show_images = False  # show generated data
 
 # Checking propagation condition for angular spectrum
