@@ -21,10 +21,10 @@ dx = 2.4
 dy = dx
 n0 = 1
 wavelength = 0.561
-delta_z = 8e3
-z_sample_ccd1 = 3.5e3
+delta_z = 8.2222e3
+z_sample_ccd1 = 3.5578e3
 z_sample_ccd2 = z_sample_ccd1 + delta_z
-delta_ph = np.pi / 4
+delta_ph = np.pi / 2
 
 # # Generation of object wave
 # amp_obj = np.ones((py, px))

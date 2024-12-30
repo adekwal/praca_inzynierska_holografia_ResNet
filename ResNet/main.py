@@ -16,15 +16,14 @@ if __name__ == '__main__':
     ####################################################################################################################
     # Simulation of the measurement data
     ####################################################################################################################
-    # wavelength = 0.561  # wavelength of light
-    wavelength = 0.1
+    wavelength = 0.561
     n0 = 1  # refractive index of air
     sampling = np.array([2.4, 2.4])     # sampling pitch of the camera
-    z_vec = np.array([3.5e3, 11.5e3])   # locations of the measurement planes
+    z_vec = np.array([3.5578e3, 11.78e3])   # locations of the measurement planes
 
     # Define the path to the npz file
     base_path = r"C:\Users\Monika Walocha\Desktop\adek files\_python\praca_inzynierska"
-    filename = os.path.join(base_path, "training_data.npz")
+    filename = os.path.join(base_path, "dane.npz")
 
     # Check if the file exists
     if not os.path.exists(filename):
