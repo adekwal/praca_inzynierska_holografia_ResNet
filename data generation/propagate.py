@@ -1,14 +1,11 @@
 import numpy as np
 
 def propagate_plane_wave(uin, z, n0, lambda_, dx, dy):
-
     Ny, Nx = uin.shape
     k = 2 * np.pi / lambda_
 
-    dfx = 1 / (Nx * dx)
-    fx = np.concatenate((np.arange(0, Nx // 2), np.arange(-Nx // 2, 0))) * dfx
-    dfy = 1 / (Ny * dy)
-    fy = np.concatenate((np.arange(0, Ny // 2), np.arange(-Ny // 2, 0))) * dfy
+    fx = np.fft.fftfreq(Nx, d=dx)
+    fy = np.fft.fftfreq(Ny, d=dy)
 
     Fx, Fy = np.meshgrid(fx, fy)
 
@@ -17,10 +14,11 @@ def propagate_plane_wave(uin, z, n0, lambda_, dx, dy):
 
     FTu = np.fft.fft2(uin)
 
-    Kernel = np.exp(1j * k * abs(z) * np.real(np.sqrt(n0**2 - lambda_**2 * (Fx**2 + Fy**2))))
-    Kernel[n0**2 < lambda_**2 * (Fx**2 + Fy**2)] = 0
+    # Angular spectrum kernel
+    kernel = np.exp(1j * k * np.abs(z) * np.real(np.sqrt(n0**2 - lambda_**2 * (Fx**2 + Fy**2))))
+    kernel[n0**2 < lambda_**2 * (Fx**2 + Fy**2)] = 0
 
-    FTu *= Kernel
+    FTu *= kernel
 
     uout = np.fft.ifft2(FTu)
 
@@ -28,4 +26,3 @@ def propagate_plane_wave(uin, z, n0, lambda_, dx, dy):
         uout = np.conj(uout)
 
     return uout
-

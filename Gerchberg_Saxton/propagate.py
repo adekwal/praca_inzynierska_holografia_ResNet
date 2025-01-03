@@ -1,11 +1,9 @@
 import numpy as np
 
-def propagate_plane_wave(uin, z, n0, wavelength, dx, dy):
+def propagate_plane_wave(uin, z, n0, lambda_, dx, dy):
     Ny, Nx = uin.shape
-    k = 2 * np.pi / wavelength
+    k = 2 * np.pi / lambda_
 
-    #dfx = 1 / (Nx * dx)
-    #dfy = 1 / (Ny * dy)
     fx = np.fft.fftfreq(Nx, d=dx)
     fy = np.fft.fftfreq(Ny, d=dy)
 
@@ -17,8 +15,8 @@ def propagate_plane_wave(uin, z, n0, wavelength, dx, dy):
     FTu = np.fft.fft2(uin)
 
     # Angular spectrum kernel
-    kernel = np.exp(1j * k * np.abs(z) * np.real(np.sqrt(n0**2 - wavelength**2 * (Fx**2 + Fy**2))))
-    kernel[n0**2 < wavelength**2 * (Fx**2 + Fy**2)] = 0
+    kernel = np.exp(1j * k * np.abs(z) * np.real(np.sqrt(n0**2 - lambda_**2 * (Fx**2 + Fy**2))))
+    kernel[n0**2 < lambda_**2 * (Fx**2 + Fy**2)] = 0
 
     FTu *= kernel
 
