@@ -85,8 +85,12 @@ def model_configuration():
     )
 
     # Model checkpoint callback for saving weights
+    # checkpoint = ModelCheckpoint(
+    #     os.path.join(os.getcwd(), r'trained_models\epoch_{epoch:02d}_model_checkpoint.keras'),
+    #     save_freq="epoch"
+    # )
     checkpoint = ModelCheckpoint(
-        os.path.join(os.getcwd(), r'trained_models\epoch_{epoch:02d}_model_checkpoint.keras'),
+        os.path.join(os.getcwd(), 'trained_models', 'epoch_{epoch:02d}_model_checkpoint.keras'),
         save_freq="epoch"
     )
 
