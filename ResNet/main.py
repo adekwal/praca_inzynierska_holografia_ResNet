@@ -1,78 +1,445 @@
 """
-The code implements the forward model for phase retrival from two defocused intensity images.
-Your task is to solve the inverse problem,
-that is to find the phase1 that will result in intensity2 prediction that is very close to the intensity2.
-
-All distances are given in um
+ResNet-20 model
+There are 3 groups. Each group has n=3 residual blocks. Each residual block has 2 Conv2D layers.
+This relates to total number of 3*2*n + 2 = 20 layers.
+The authors claim that the code worked only for SGD, not Adam or SGDW!
+source:
+https://github.com/christianversloot/machine-learning-articles/blob/main/how-to-build-a-resnet-from-scratch-with-tensorflow-2-and-keras.md
+how to get Tesnorboard type in terminal: python -m tensorboard.main --logdir=logs/
 """
-
-import numpy as np
 import os
-import scipy.io as sio
-from utils import propagate_as
+os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
+import numpy as np
+import tensorflow
+from tensorflow.keras import Model
+from tensorflow.keras.layers import Add, GlobalAveragePooling2D, \
+    Conv2D, Lambda, Input, BatchNormalization, Activation, MaxPool2D, UpSampling2D
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint, Callback
+from keras.optimizers.schedules import ExponentialDecay
 import matplotlib.pyplot as plt
+import shutil
+import h5py
+import pickle
 
-if __name__ == '__main__':
-    ####################################################################################################################
-    # Simulation of the measurement data
-    ####################################################################################################################
-    wavelength = 0.561
-    n0 = 1  # refractive index of air
-    sampling = np.array([2.4, 2.4])     # sampling pitch of the camera
-    z_vec = np.array([3.5578e3, 11.78e3])   # locations of the measurement planes
+dataset_file = r"C:/Users/Monika Walocha/Desktop/adek files/_python/praca_inzynierska/dane50_compressed.h5"
+global_dataset = None
 
-    # Define the path to the npz file
-    base_path = r"C:\Users\Monika Walocha\Desktop\adek files\_python\praca_inzynierska"
-    filename = os.path.join(base_path, "dane.npz")
+def get_dataset_size(file_path):
+    with h5py.File(file_path, 'r') as h5f:
+        dataset = h5f['inputs']
+        return dataset.shape[0]
 
-    # Check if the file exists
-    if not os.path.exists(filename):
-        raise FileNotFoundError(f"File not found: {filename}")
 
-    # Load data from the npz file
-    data_obj = np.load(filename)
+def model_configuration():
+    global global_dataset  # use the global dataset variable
 
-    # Extract amplitude and phase data
-    # Assuming `inputs` corresponds to amplitude and `phase0` corresponds to phase
-    amp_obj = data_obj['inputs'][:, :, 0, 0]  # Load the first image as an example
-    phase_obj = data_obj['phase0'][:, :, 0, 0]  # Load the first phase map as an example
+    # Ensure the dataset is loaded
+    if global_dataset is None:
+        load_dataset()
 
-    # Combine amplitude and phase into optical field
-    u_obj = amp_obj * np.exp(1j*phase_obj)
+    # Generic configuration
+    width, height, channels = 512, 512, 1
+    batch_size = 1
+    validation_split = 0.2
+    verbose = 1
+    n = 3  # number of residual blocks in a single group
+    init_fm_dim = 16  # initial number of feature maps; doubles as the feature map size halves
+    shortcut_type = "identity"  # shortcut type: "identity" or "projection"
 
-    # Propagate to the first measurement plane
-    u1 = propagate_as(u_obj,z_vec[0],wavelength,n0,sampling)
-    # Propagate to the second measurement plane
-    u2 = propagate_as(u_obj, z_vec[1], wavelength, n0, sampling)
+    num_samples = get_dataset_size(dataset_file)
+    train_size = (1 - validation_split) * num_samples
+    val_size = validation_split * num_samples
 
-    # Simulate the intensity images (i1 and i2 are the inputs for the phase retrival algorithm
-    i1 = np.abs(u1) ** 2
-    i2 = np.abs(u2) ** 2
+    # Calculate parameters
+    maximum_number_iterations = 160  # maximum number of iterations as per the paper (32000)
+    steps_per_epoch = np.ceil(train_size / batch_size).astype(int)
+    val_steps_per_epoch = np.ceil(val_size / batch_size).astype(int)
+    epochs = tensorflow.cast(
+        tensorflow.math.ceil(maximum_number_iterations / steps_per_epoch),
+        dtype=tensorflow.int64
+    )
 
-    # Obtain the phase at z1 (phase1 is that we are looking for solving the inverse problem - tf.Variable)
-    phase1 = np.angle(u1)
+    # Define the loss function
+    loss = tensorflow.keras.losses.MeanSquaredError()
 
-    ####################################################################################################################
-    # The actual forward model
-    ####################################################################################################################
-    # we can start with null initial guess of the phase; gradient descent will iterative improve our guess
-    phase1_est = np.zeros_like(phase1)
-    # at the end we want phase1_est (estimate of phase1) to be as close to true phase1 as possible
-    # phase1_est = phase1 # CHECK OUT THIS OPTION - UNCOMMENT THIS LINE
+    # Set layer initializer
+    initializer = tensorflow.keras.initializers.HeNormal()
 
-    # build optical field estimate
-    u1_est = np.sqrt(i1) * np.exp(1j*phase1_est)
+    # Define the optimizer
+    lr_schedule = ExponentialDecay(
+        initial_learning_rate=5e-2,
+        decay_steps=10000,
+        decay_rate=0.9
+    )
+    optimizer = Adam(learning_rate=lr_schedule)
 
-    # Propagate from the first to second measurement plane
-    u2_est = propagate_as(u1_est,z_vec[1]-z_vec[0],wavelength,n0,sampling)
+    # TensorBoard callback for monitoring
+    tensorboard = TensorBoard(
+        os.path.join(os.getcwd(), "logs"),
+        histogram_freq=1,
+        write_steps_per_second=True,
+        write_images=True,
+        update_freq='epoch'
+    )
 
-    # evaluate the intensity image corresponding to u2_est
-    i2_est = np.abs(u2_est) ** 2
+    # Model checkpoint callback for saving weights
+    checkpoint = ModelCheckpoint(
+        os.path.join(os.getcwd(), r'trained_models\epoch_{epoch:02d}_model_checkpoint.keras'),
+        save_freq="epoch"
+    )
 
-    # Display the results
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 8))
-    im1 = ax1.imshow(i2_est)
-    ax1.set_title("predicted intensity at z2")
-    im2 = ax2.imshow(i2)
-    ax2.set_title("the actual intensity at z2")
+    class SaveBatchLoss(Callback):
+        def on_train_begin(self, logs={}):
+            self.train_losses = []
+        def on_train_batch_end(self, batch, logs={}):
+            self.train_losses.append(logs.get('loss'))
+        def on_train_end(self, logs={}):
+            with open("trained_models\\train_losses", "wb") as fp:  # pickling
+                pickle.dump(self.train_losses, fp)
+
+    save_batch_loss = SaveBatchLoss()
+
+    # Add callbacks to a list
+    callbacks = [
+        tensorboard,
+        checkpoint,
+        save_batch_loss
+    ]
+
+    # Create configuration dictionary
+    config = {
+        "epochs": epochs,
+        "width": width,
+        "height": height,
+        "dim": channels,
+        "batch_size": batch_size,
+        "validation_split": validation_split,
+        "verbose": verbose,
+        "stack_n": n,
+        "initial_num_feature_maps": init_fm_dim,
+        "training_ds_size": train_size,
+        "steps_per_epoch": steps_per_epoch,
+        "val_steps_per_epoch": val_steps_per_epoch,
+        "num_epochs": epochs,
+        "loss": loss,
+        "optim": optimizer,
+        "initializer": initializer,
+        "callbacks": callbacks,
+        "shortcut_type": shortcut_type
+    }
+
+    return config
+
+
+def load_dataset():
+    global global_dataset
+
+    try:
+        h5f = h5py.File(dataset_file, "r")
+
+        if 'inputs' not in h5f or 'targets' not in h5f:
+            raise KeyError("Missing 'inputs' or 'targets' datasets in the HDF5 file.")
+
+        global_dataset = {"inputs": h5f['inputs'], "targets": h5f['targets']} # use lazy loading to create an object
+
+        num_samples = global_dataset['inputs'].shape[0]
+        print(f"Loaded dataset: {num_samples} samples into global_dataset.")
+
+    except FileNotFoundError:
+        raise FileNotFoundError("The dataset file was not found.")
+    except KeyError as e:
+        raise KeyError(f"Missing expected data key in the file: {e}")
+    except Exception as e:
+        raise RuntimeError(f"An error occurred while loading the dataset: {e}")
+
+
+def data_generator(inputs, targets, batch_size):
+    total_samples = inputs.shape[0]
+
+    for start_idx in range(0, total_samples, batch_size):
+        end_idx = min(start_idx + batch_size, total_samples)
+        batch_inputs = inputs[start_idx:end_idx]
+        batch_targets = targets[start_idx:end_idx]
+        yield batch_inputs, batch_targets
+
+
+def preprocessed_dataset():
+    global global_dataset
+
+    if global_dataset is None:
+        load_dataset()
+
+    inputs = global_dataset["inputs"]
+    targets = global_dataset["targets"]
+    config = model_configuration()
+    validation_split = config["validation_split"]
+    batch_size = config["batch_size"]
+
+    # Calculate set size
+    total_samples = len(inputs)
+    val_test_size = int(total_samples * validation_split)
+    val_size = val_test_size // 2
+    train_size = total_samples - val_test_size
+
+    # Calculate the indices for dataset splitting
+    train_indices = range(0, train_size)
+    val_indices = range(train_size, train_size + val_size)
+    test_indices = range(train_size + val_size, total_samples)
+
+    # Define generators
+    train_gen = lambda: data_generator(inputs[train_indices], targets[train_indices], batch_size)
+    val_gen = lambda: data_generator(inputs[val_indices], targets[val_indices], batch_size)
+    test_gen = lambda: data_generator(inputs[test_indices], targets[test_indices], batch_size)
+
+    # Create TensorFlow sets
+    train_dataset = tensorflow.data.Dataset.from_generator(
+        train_gen,
+        output_signature=(
+            tensorflow.TensorSpec(shape=(None,) + inputs.shape[1:], dtype=inputs.dtype),
+            tensorflow.TensorSpec(shape=(None,) + targets.shape[1:], dtype=targets.dtype),
+        )
+    )
+
+    validation_dataset = tensorflow.data.Dataset.from_generator(
+        val_gen,
+        output_signature=(
+            tensorflow.TensorSpec(shape=(None,) + inputs.shape[1:], dtype=inputs.dtype),
+            tensorflow.TensorSpec(shape=(None,) + targets.shape[1:], dtype=targets.dtype),
+        )
+    )
+
+    test_dataset = tensorflow.data.Dataset.from_generator(
+        test_gen,
+        output_signature=(
+            tensorflow.TensorSpec(shape=(None,) + inputs.shape[1:], dtype=inputs.dtype),
+            tensorflow.TensorSpec(shape=(None,) + targets.shape[1:], dtype=targets.dtype),
+        )
+    )
+
+    # Prepare datasets
+    train_dataset = train_dataset.shuffle(buffer_size=1024).repeat().prefetch(tensorflow.data.AUTOTUNE)
+    validation_dataset = validation_dataset.repeat().prefetch(tensorflow.data.AUTOTUNE)
+    test_dataset = test_dataset.prefetch(tensorflow.data.AUTOTUNE)
+
+    return train_dataset, validation_dataset, test_dataset
+
+
+def residual_block(x, number_of_filters):
+    """
+    Residual block with
+    """
+    # Retrieve initializer
+    config = model_configuration()
+    initializer = config.get("initializer")
+
+    # Create skip connection
+    x_skip = x
+
+    # Perform the original mapping
+    x = Conv2D(number_of_filters, kernel_size=(3, 3), strides=(1, 1),
+               kernel_initializer=initializer, padding="same")(x_skip)
+    x = BatchNormalization(axis=3)(x)
+    x = Activation("relu")(x)
+    x = Conv2D(number_of_filters, kernel_size=(3, 3),
+               kernel_initializer=initializer, padding="same")(x)
+    x = BatchNormalization(axis=3)(x)
+
+    # Add the skip connection to the regular mapping
+    x = Add()([x, x_skip])
+
+    # Nonlinearly activate the result
+    x = Activation("relu")(x)
+
+    # Return the result
+    return x
+
+
+def ResidualBlocks(x):
+    """
+    Set up the residual blocks.
+    """
+    # Retrieve values
+    config = model_configuration()
+
+    # Set initial filter size
+    filter_size = config.get("initial_num_feature_maps")
+
+    # Paper: "Then we use a stack of 6n layers (...)
+    #	with 2n layers for each feature map size."
+    # 6n/2n = 3, so there are always 3 groups.
+    for layer_group in range(4):
+        # Each block in our code has 2 weighted layers,
+        # and each group has 2n such blocks,
+        # so 2n/2 = n blocks per group.
+        for block in range(config.get("stack_n")):
+            x = residual_block(x, filter_size)
+    # Return final layer
+    return x
+
+
+def ResNetPath(x, scale=2):
+    """
+    Define a single ResNet path with rescaled feature maps size
+    Args:
+        x: input feature map
+        scale: factor at which the feature maps should be rescaled before entering to Residual Block
+
+    Returns: output feature map with the original size
+
+    """
+    config = model_configuration()
+    initializer = model_configuration().get("initializer")
+
+    assert (scale >= 1 and isinstance(scale,int))
+    if scale > 1:
+        x = MaxPool2D(pool_size=(3, 3), strides=scale, padding="same")(x)
+    x = ResidualBlocks(x)
+    if scale > 1:
+        x = UpSampling2D(size=scale, interpolation="bilinear")(x)
+    x = Conv2D(config.get("initial_num_feature_maps"), kernel_size=(3, 3),
+               strides=(1, 1), kernel_initializer=initializer, padding="same")(x)
+    x = BatchNormalization()(x)
+    return Activation("relu")(x)
+
+
+def model_base(shp):
+    """
+    Base structure of the model, with residual blocks
+    attached.
+    """
+    # Get number of classes from model configuration
+    config = model_configuration()
+    initializer = model_configuration().get("initializer")
+
+    # Define model structure
+    inputs = Input(shape=shp)
+    x = Conv2D(config.get("initial_num_feature_maps"), kernel_size=(3, 3),
+               strides=(1, 1), kernel_initializer=initializer, padding="same")(inputs)
+    x = BatchNormalization()(x)
+    x = Activation("relu")(x)
+    x1 = ResNetPath(x, 1)
+    x2 = ResNetPath(x, 2)
+    x = Add()([x1, x2])
+    x = Conv2D(filters=1, kernel_size=(1, 1), strides=(1, 1),
+               kernel_initializer=initializer, padding="same")(x)
+    x = BatchNormalization()(x)
+    outputs = Activation("relu")(x)
+
+    return inputs, outputs
+
+
+def init_model():
+    """
+    Initialize a compiled ResNet model.
+    """
+    # Get shape from model configuration
+    config = model_configuration()
+
+    # Get model base
+    inputs, outputs = model_base((config.get("width"), config.get("height"),
+                                  config.get("dim")))
+
+    # Initialize and compile model
+    model = Model(inputs, outputs, name=config.get("name"))
+
+    model.compile(loss=config.get("loss"),
+                  optimizer=config.get("optim"),
+                  metrics=config.get("optim_additional_metrics"))
+
+    # Print model summary
+    model.summary()
+
+    return model
+
+
+def train_model(model, train_batches, validation_batches):
+    """
+    Train an initialized model.
+    """
+
+    # Get model configuration
+    config = model_configuration()
+
+    # Fit data to model
+    hist_obj = model.fit(train_batches,
+                  batch_size=config.get("batch_size"),
+                  epochs=config.get("num_epochs"),
+                  verbose=config.get("verbose"),
+                  callbacks=config.get("callbacks"),
+                  steps_per_epoch=config.get("steps_per_epoch"), #
+                  validation_data=validation_batches,
+                  validation_steps=config.get("val_steps_per_epoch") #
+                         )
+
+    # loss = hist_obj.history['loss']
+    # val_loss = hist_obj.history['val_loss']
+    # plt.plot(np.log(loss), label='Training Loss')
+    # plt.plot(np.log(val_loss), label='Validation Loss')
+    # plt.legend(loc='upper right')
+    # plt.ylabel('Log loss')
+    # plt.title('Training and Validation Loss')
+    # plt.xlabel('epoch')
+    # plt.show()
+
+    return model, hist_obj
+
+
+def evaluate_model(model, test_batches):
+    """
+    Evaluate a trained model.
+    """
+    # Evaluate model
+    score = model.evaluate(test_batches, verbose=1)
+    print(f'Test loss: {score}')
+
+def show_training_progress(hist_obj):
+    config = model_configuration()
+    loss = hist_obj.history['loss']
+    val_loss = hist_obj.history['val_loss']
+    epochs = range(1,len(loss)+1)
+    try:
+        # Try to access and plot loss per iteration
+        with open("trained_models\\train_losses", "rb") as fp:
+            train_loss_per_batch = pickle.load(fp)
+        iters = range(1, len(train_loss_per_batch) + 1)
+        plt.plot(iters, np.log(train_loss_per_batch),'b', label='Training Loss')
+    except:
+        print("An exception occurred")
+    plt.plot(epochs * config["steps_per_epoch"], np.log(loss), 'bo', label='Training Loss per epoch')
+    plt.plot(epochs * config["steps_per_epoch"], np.log(val_loss), 'ro', label='Validation Loss per epoch')
+    plt.legend(loc='upper right')
+    plt.ylabel('Log loss')
+    plt.title('Training and Validation Loss')
+    plt.xlabel('epoch')
     plt.show()
+
+
+def training_process():
+    """
+    Run the training process for the ResNet model.
+    """
+
+    # Get dataset
+    train_batches, validation_batches, test_batches = preprocessed_dataset()
+
+    # Prepare directory for logs
+    log_dir = os.path.join(os.getcwd(), "logs")
+    if os.path.exists(log_dir) and os.path.isdir(log_dir):
+         shutil.rmtree(log_dir)
+
+    # Initialize ResNet
+    resnet = init_model()
+
+    # Train ResNet model
+    trained_resnet, history = train_model(resnet, train_batches, validation_batches)
+
+    show_training_progress(history)
+
+    # Evaluate trained ResNet model post training
+    evaluate_model(trained_resnet, test_batches)
+
+
+if __name__ == "__main__":
+    training_process()
