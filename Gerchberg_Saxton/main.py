@@ -8,16 +8,17 @@ import tensorflow as tf
 from gerchberg_saxton import rec_gs
 from propagate import propagate_plane_wave
 from plots import plot_charts
+from prepare_image import resize
 
 # Configuration
-h5_path = r"C:\Users\Monika Walocha\Desktop\adek files\_python\praca_inzynierska\dane50_compressed.h5"
+# h5_path = r"C:\Users\Monika Walocha\Desktop\adek files\_python\praca_inzynierska\dane50_compressed.h5"
 # h5_path = r"C:\Users\Monika Walocha\Desktop\adek files\_python\praca_inzynierska\dane_testowe\kulki.h5"
-# h5_path = r"C:\Users\Monika Walocha\Desktop\adek files\_python\praca_inzynierska\dane_testowe\dane_eksperymentalne_pop.h5"
+h5_path = r"C:\Users\Monika Walocha\Desktop\adek files\_python\praca_inzynierska\dane_testowe\dane_eksperymentalne.h5"
 model_path = r"C:\Users\Monika Walocha\Desktop\adek files\_python\ResNet\trained_models_tf_gpu_50epok\epoch_50_model_checkpoint.keras"
 
 # User setup
-use_training_set = True
-image_index = 5
+use_training_set = False # set True if using training set because of different label
+image_index = 0
 
 # Define simulation parameters
 iter_max = 100
@@ -27,9 +28,10 @@ constraint = "A"
 
 nx = int(1024 / 2)
 ny = int(1024 / 2)
-px = 512  # padded image size
-py = 512
-n_disp = 512
+px = 1024 # padded image size
+py = 1024
+x_pos = 500
+y_pos = 1800
 
 dx = 2.4
 dy = dx
@@ -52,12 +54,16 @@ with h5py.File(h5_path, 'r') as f:
         i1 = f['i_ccd1'][:]
         i2 = f['i_ccd2'][:]
 
-model = tf.keras.models.load_model(model_path) # load the trained ResNet model
+if not use_training_set:
+    if i1.shape != (512, 512):
+        i1 = resize(i1, nx, ny, px, py, x_pos, y_pos)
+        i2 = resize(i2, nx, ny, px, py, x_pos, y_pos)
 
 
 # Generate predicted intensity from the model
 i1 = np.squeeze(i1)
 i2 = np.squeeze(i2)
+model = tf.keras.models.load_model(model_path) # load the trained ResNet model
 i2_predicted = model.predict(i1[np.newaxis, :, :, np.newaxis])[0, :, :, 0]
 print("Image has been generated")
 print("Please wait...")
