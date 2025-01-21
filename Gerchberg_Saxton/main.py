@@ -9,19 +9,20 @@ from gerchberg_saxton import rec_gs
 from propagate import propagate_plane_wave
 from plots import plot_charts
 from prepare_image import resize
+from prepare_image import crop
 
 # Configuration
-# h5_path = r"C:\Users\Monika Walocha\Desktop\adek files\_python\praca_inzynierska\dane50_compressed.h5"
+h5_path = r"C:\Users\Monika Walocha\Desktop\adek files\_python\praca_inzynierska\dane50_compressed.h5"
 # h5_path = r"C:\Users\Monika Walocha\Desktop\adek files\_python\praca_inzynierska\dane_testowe\kulki.h5"
-h5_path = r"C:\Users\Monika Walocha\Desktop\adek files\_python\praca_inzynierska\dane_testowe\dane_eksperymentalne.h5"
+# h5_path = r"C:\Users\Monika Walocha\Desktop\adek files\_python\praca_inzynierska\dane_testowe\dane_eksperymentalne.h5"
 model_path = r"C:\Users\Monika Walocha\Desktop\adek files\_python\ResNet\trained_models_tf_gpu_50epok\epoch_50_model_checkpoint.keras"
 
 # User setup
-use_training_set = False # set True if using training set because of different label
+use_training_set = True # set True if using training set because of different label
 image_index = 0
 
 # Define simulation parameters
-iter_max = 100
+iter_max = 200
 ph_init_mode = "null"
 regularize = 1
 constraint = "A"
@@ -68,6 +69,17 @@ i2_predicted = model.predict(i1[np.newaxis, :, :, np.newaxis])[0, :, :, 0]
 print("Image has been generated")
 print("Please wait...")
 
+# Remove and duplicate 10 px at edges
+i2_predicted = i2_predicted[10:-10, 10:-10]
+i2_predicted = np.pad(i2_predicted, pad_width=10, mode='edge')
+
+# Padding to 1024x1024
+pad_x = (int(py / 2 - ny / 2), int(py / 2 - ny / 2))
+pad_y = (int(px / 2 - nx / 2), int(px / 2 - nx / 2))
+i1 = np.pad(i1, (pad_x, pad_y), mode='edge')
+i2 = np.pad(i2, (pad_x, pad_y), mode='edge')
+i2_predicted = np.pad(i2_predicted, (pad_x, pad_y), mode='edge')
+
 
 def create_data(network_data):
     return {
@@ -111,6 +123,20 @@ u_rec_gs_z0_perfect = propagate_plane_wave(u_rec_gs_z1_perfect, -z_sample_ccd1, 
 # Calculate phase at object plane
 ph_rec_gs_z0_predicted = np.angle(u_rec_gs_z0_predicted / np.mean(u_rec_gs_z0_predicted))
 ph_rec_gs_z0_perfect = np.angle(u_rec_gs_z0_perfect / np.mean(u_rec_gs_z0_perfect))
+
+
+# Cropping to 512x512
+i1 = crop(i1, nx, ny, px, py)
+i2 = crop(i2, nx, ny, px, py)
+i2_predicted = crop(i2_predicted, nx, ny, px, py)
+
+ph_rec_gabor_z1 = crop(ph_rec_gabor_z1, nx, ny, px, py)
+ph1_perfect = crop(ph1_perfect, nx, ny, px, py)
+ph1_predicted = crop(ph1_predicted, nx, ny, px, py)
+
+ph_rec_gabor_z0 = crop(ph_rec_gabor_z0, nx, ny, px, py)
+ph_rec_gs_z0_perfect = crop(ph_rec_gs_z0_perfect, nx, ny, px, py)
+ph_rec_gs_z0_predicted = crop(ph_rec_gs_z0_predicted, nx, ny, px, py)
 
 
 ## Show results

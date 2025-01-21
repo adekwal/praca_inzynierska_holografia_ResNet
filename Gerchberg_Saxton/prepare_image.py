@@ -9,3 +9,5 @@ def resize(image, nx, ny, px, py, x_pos, y_pos):
 
     return image
 
+def crop(image, nx, ny, px, py):
+    return image[int(py / 2 - ny / 2): int(py / 2 + ny / 2), int(px / 2 - nx / 2): int(px / 2 + nx / 2)]
