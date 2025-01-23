@@ -22,7 +22,7 @@ use_training_set = True # set True if using training set because of different la
 image_index = 0
 
 # Define simulation parameters
-iter_max = 200
+iter_max = 100
 ph_init_mode = "null"
 regularize = 1
 constraint = "A"
@@ -32,7 +32,7 @@ ny = int(1024 / 2)
 px = 1024 # padded image size
 py = 1024
 x_pos = 500
-y_pos = 1800
+y_pos = 500
 
 dx = 2.4
 dy = dx
@@ -49,8 +49,8 @@ with h5py.File(h5_path, 'r') as f:
     if use_training_set:
         i1 = f['inputs'][image_index]
         i2 = f['targets'][image_index]
-        # ph0 = f['phase0'][image_index]
-        # ph1 = f['phase1'][image_index]
+        ph0 = f['phase0'][image_index]
+        ph1 = f['phase1'][image_index]
     else:
         i1 = f['i_ccd1'][:]
         i2 = f['i_ccd2'][:]
@@ -60,16 +60,19 @@ if not use_training_set:
         i1 = resize(i1, nx, ny, px, py, x_pos, y_pos)
         i2 = resize(i2, nx, ny, px, py, x_pos, y_pos)
 
-
-# Generate predicted intensity from the model
+# Delete last axis
 i1 = np.squeeze(i1)
 i2 = np.squeeze(i2)
+if use_training_set:
+    ph1 = np.squeeze(ph1)
+    ph0 = np.squeeze(ph0)
+
+# Generate predicted intensity from the model
 model = tf.keras.models.load_model(model_path) # load the trained ResNet model
 i2_predicted = model.predict(i1[np.newaxis, :, :, np.newaxis])[0, :, :, 0]
 print("Image has been generated")
 print("Please wait...")
 
-# Remove and duplicate 10 px at edges
 i2_predicted = i2_predicted[10:-10, 10:-10]
 i2_predicted = np.pad(i2_predicted, pad_width=10, mode='edge')
 
@@ -126,31 +129,36 @@ ph_rec_gs_z0_perfect = np.angle(u_rec_gs_z0_perfect / np.mean(u_rec_gs_z0_perfec
 
 
 # Cropping to 512x512
-i1 = crop(i1, nx, ny, px, py)
-i2 = crop(i2, nx, ny, px, py)
-i2_predicted = crop(i2_predicted, nx, ny, px, py)
+i1_cropped = crop(i1, nx, ny, px, py)
+i2_cropped = crop(i2, nx, ny, px, py)
+i2_predicted_cropped = crop(i2_predicted, nx, ny, px, py)
 
-ph_rec_gabor_z1 = crop(ph_rec_gabor_z1, nx, ny, px, py)
-ph1_perfect = crop(ph1_perfect, nx, ny, px, py)
-ph1_predicted = crop(ph1_predicted, nx, ny, px, py)
+ph_rec_gabor_z1_cropped = crop(ph_rec_gabor_z1, nx, ny, px, py)
+ph1_perfect_cropped = crop(ph1_perfect, nx, ny, px, py)
+ph1_predicted_cropped = crop(ph1_predicted, nx, ny, px, py)
 
-ph_rec_gabor_z0 = crop(ph_rec_gabor_z0, nx, ny, px, py)
-ph_rec_gs_z0_perfect = crop(ph_rec_gs_z0_perfect, nx, ny, px, py)
-ph_rec_gs_z0_predicted = crop(ph_rec_gs_z0_predicted, nx, ny, px, py)
+ph_rec_gabor_z0_cropped = crop(ph_rec_gabor_z0, nx, ny, px, py)
+ph_rec_gs_z0_perfect_cropped = crop(ph_rec_gs_z0_perfect, nx, ny, px, py)
+ph_rec_gs_z0_predicted_cropped = crop(ph_rec_gs_z0_predicted, nx, ny, px, py)
 
 
 ## Show results
-i_charts = [i1, i2, i2_predicted]
+i_charts = [i1_cropped, i2_cropped, i2_predicted_cropped]
 i_titles = ["i1", "i2", "i2 (ResNet)"]
-plot_charts(i_charts, i_titles, suptitle="Intensity", cbar_label="Intensity Value")
+plot_charts(i_charts, i_titles, suptitle="Intensity comparison", cbar_label="Intensity")
 
-ph1_charts = [ph_rec_gabor_z1, ph1_perfect, ph1_predicted]
+ph1_charts = [ph_rec_gabor_z1_cropped, ph1_perfect_cropped, ph1_predicted_cropped]
 ph1_titles = ["ph1 (Gabor)", "ph1 (GS)", "ph1 (GS + ResNet)"]
-plot_charts(ph1_charts, ph1_titles, suptitle="Phase ph1 comparison", cbar_label="Phase Value")
+plot_charts(ph1_charts, ph1_titles, suptitle="Phase ph1 comparison", cbar_label="Phase [rad]")
 
-ph0_charts = [ph_rec_gabor_z0, ph_rec_gs_z0_perfect, ph_rec_gs_z0_predicted]
-ph0_titles = ["ph0 (Gabor)", "ph0 (GS)", "ph0 (GS + ResNet)"]
-plot_charts(ph0_charts, ph0_titles, suptitle="Phase ph0 comparison", cbar_label="Phase Value")
+if use_training_set:
+    ph0_charts = [ph_rec_gabor_z0_cropped, ph_rec_gs_z0_perfect_cropped, ph_rec_gs_z0_predicted_cropped]
+    ph0_titles = ["ph0 (Gabor)", "ph0 (GS)", "ph0 (GS + ResNet)"]
+    plot_charts(ph0_charts, ph0_titles, suptitle="Phase ph0 comparison", cbar_label="Phase [rad]")
+else:
+    ph0_charts = [ph0, ph_rec_gabor_z0_cropped, ph_rec_gs_z0_perfect_cropped, ph_rec_gs_z0_predicted_cropped]
+    ph0_titles = ["ph0", "ph0 (Gabor)", "ph0 (GS)", "ph0 (GS + ResNet)"]
+    plot_charts(ph0_charts, ph0_titles, suptitle="Phase ph0 comparison", cbar_label="Phase [rad]")
 
 # Show cost function
 plt.figure()
