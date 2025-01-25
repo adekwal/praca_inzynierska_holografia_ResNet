@@ -145,20 +145,36 @@ ph_rec_gs_z0_predicted_cropped = crop(ph_rec_gs_z0_predicted, nx, ny, px, py)
 ## Show results
 i_charts = [i1_cropped, i2_cropped, i2_predicted_cropped]
 i_titles = ["i1", "i2", "i2 (ResNet)"]
-plot_charts(i_charts, i_titles, suptitle="Intensity comparison", cbar_label="Intensity")
-
-ph1_charts = [ph_rec_gabor_z1_cropped, ph1_perfect_cropped, ph1_predicted_cropped]
-ph1_titles = ["ph1 (Gabor)", "ph1 (GS)", "ph1 (GS + ResNet)"]
-plot_charts(ph1_charts, ph1_titles, suptitle="Phase ph1 comparison", cbar_label="Phase [rad]")
+plot_charts(i_charts, i_titles, suptitle="Rozkłady intensywności", cbar_label="intensywność")
 
 if use_training_set:
-    ph0_charts = [ph_rec_gabor_z0_cropped, ph_rec_gs_z0_perfect_cropped, ph_rec_gs_z0_predicted_cropped]
-    ph0_titles = ["ph0 (Gabor)", "ph0 (GS)", "ph0 (GS + ResNet)"]
-    plot_charts(ph0_charts, ph0_titles, suptitle="Phase ph0 comparison", cbar_label="Phase [rad]")
-else:
+    ph1_charts = [ph1, ph_rec_gabor_z1_cropped, ph1_perfect_cropped, ph1_predicted_cropped]
+    ph1_titles = ["ph1", "ph1 (Gabor)", "ph1 (GS)", "ph1 (GS + ResNet)"]
+    plot_charts(ph1_charts, ph1_titles, suptitle="Porównanie rozkładów fazy ph1", cbar_label="faza [rad]")
+
     ph0_charts = [ph0, ph_rec_gabor_z0_cropped, ph_rec_gs_z0_perfect_cropped, ph_rec_gs_z0_predicted_cropped]
     ph0_titles = ["ph0", "ph0 (Gabor)", "ph0 (GS)", "ph0 (GS + ResNet)"]
-    plot_charts(ph0_charts, ph0_titles, suptitle="Phase ph0 comparison", cbar_label="Phase [rad]")
+    plot_charts(ph0_charts, ph0_titles, suptitle="Porównanie rozkładów fazy ph0", cbar_label="faza [rad]")
+
+    ph0_diff = [ph_rec_gabor_z0_cropped - ph0, ph_rec_gs_z0_perfect_cropped - ph0, ph_rec_gs_z0_predicted_cropped - ph0]
+    ph0_diff_titles = ["ph0 (Gabor) - ph0", "ph0 (GS) - ph0", "ph0 (GS + ResNet) - ph0"]
+    plot_charts(ph0_diff, ph0_diff_titles,
+                suptitle="Różnica między zrekonstruwanym rozkładem fazy\na rozkładem rzeczywistym ph0",
+                cbar_label="faza [rad]")
+else:
+    ph1_charts = [ph_rec_gabor_z1_cropped, ph1_perfect_cropped, ph1_predicted_cropped]
+    ph1_titles = ["ph1 (Gabor)", "ph1 (GS)", "ph1 (GS + ResNet)"]
+    plot_charts(ph1_charts, ph1_titles, suptitle="Porównanie rozkładów fazy ph1", cbar_label="faza [rad]")
+
+    ph0_charts = [ph_rec_gabor_z0_cropped, ph_rec_gs_z0_perfect_cropped, ph_rec_gs_z0_predicted_cropped]
+    ph0_titles = ["ph0 (Gabor)", "ph0 (GS)", "ph0 (GS + ResNet)"]
+    plot_charts(ph0_charts, ph0_titles, suptitle="Porównianie rozkładów fazy ph0", cbar_label="faza [rad]")
+
+ph0_diff_ = [ph_rec_gabor_z0_cropped - ph_rec_gs_z0_perfect_cropped, ph_rec_gs_z0_predicted_cropped - ph_rec_gs_z0_perfect_cropped]
+ph0_diff_titles_ = ["ph0 (Gabor) - ph0 (GS)", "ph0 (GS + ResNet) - ph0 (GS)"]
+plot_charts(ph0_diff_, ph0_diff_titles_,
+            suptitle="Różnica między zrekonstruowanym rozkładem fazy\na zrekonstruowanym rozkładem z metody Gerchberga-Saxtona",
+            cbar_label="faza [rad]")
 
 # Show cost function
 plt.figure()
