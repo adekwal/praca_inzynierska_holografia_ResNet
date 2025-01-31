@@ -5,11 +5,12 @@ import numpy as np
 import h5py
 import matplotlib.pyplot as plt
 import tensorflow as tf
+from tabulate import tabulate
 from gerchberg_saxton import rec_gs
 from propagate import propagate_plane_wave
 from plots import plot_charts
-from prepare_image import resize
-from prepare_image import crop
+from prepare_image import resize, crop
+from calculate import calc_RMSE, calc_SSIM
 
 # Configuration
 h5_path = r"C:\Users\Monika Walocha\Desktop\adek files\_python\praca_inzynierska\dane50_compressed.h5"
@@ -175,6 +176,15 @@ ph0_diff_titles_ = ["ph0 (Gabor) - ph0 (GS)", "ph0 (GS + ResNet) - ph0 (GS)"]
 plot_charts(ph0_diff_, ph0_diff_titles_,
             suptitle="Różnica między zrekonstruowanym rozkładem fazy\na zrekonstruowanym rozkładem z metody Gerchberga-Saxtona",
             cbar_label="faza [rad]")
+
+
+results = [
+    ["", "RMSE", "SSIM"],
+    ["Gabor", calc_RMSE(ph1_perfect_cropped, ph_rec_gabor_z1_cropped), calc_SSIM(ph1_perfect_cropped, ph_rec_gabor_z1_cropped)],
+    ["GS+ResNet", calc_RMSE(ph1_perfect_cropped, ph1_predicted_cropped), calc_SSIM(ph1_perfect_cropped, ph1_predicted_cropped)]
+]
+results_table = tabulate(results, tablefmt="rounded_grid")
+tf.print(results_table)
 
 # Show cost function
 plt.figure()
