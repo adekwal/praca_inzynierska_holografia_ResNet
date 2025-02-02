@@ -22,8 +22,8 @@ To run the project, you need to install the following packages:
 ## Instalation
 
 To install and run the project, follow these steps:
-1. Install PyCharm – Download and install PyCharm, one of the best editors for Python projects. You can download it from the official site: [PyCharm Download](https://www.jetbrains.com/pycharm/download/)
-2. Copy the files from this repository – Download or clone the repository to your device. Then, copy the files into 3 different directories corresponding to the three programs in the project:
+1. Install PyCharm – download and install PyCharm, you can download it from the official site: [PyCharm Download](https://www.jetbrains.com/pycharm/download/)
+2. Copy the files from this repository – download or clone the repository to your device, then copy the files into 3 different directories corresponding to the three programs in the project:
 - program 1: Training Data Generator
 - program 2: CNN ResNet
 - program 3: Phase Reconstruction Methods
@@ -45,15 +45,15 @@ To install and run the project, follow these steps:
 - open the data generator script
 - choose the appropriate path to the image directory and the location where the training file will be saved
 - define the output file name and type, as well as the save location
-- set the physical parameters for the simulation (e.g., wavelength, distance, etc.)
+- set the physical parameters for the simulation (e.g. wavelength, distance)
 - select the number of images for which the data should be prepared
 - run the script to generate the training data
 2. Run the ResNet:
 - open the script containing the ResNet implementation
 - provide the path to the training file generated in the previous step
-- run the script to train the model
+- run the script to train the model - you can go for a coffee, it will take some time
 3. Reconstruct the phase:
 - open the script implementing the Gerchberg-Saxton (GS) algorithm
 - provide the path to the saved neural network (the model after training)
-- specify the paths to the measurement, training, or simulation data files, including intensity distributions from two planes
+- specify the paths to the training, measurement or simulation data files, that include intensity distributions from two planes
 - run the script to perform phase reconstruction
