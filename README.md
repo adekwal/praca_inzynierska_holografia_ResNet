@@ -3,9 +3,9 @@
 ## Overview
 
 This repository contains an implementation of a convolutional neural network (CNN) to generate one of two intensity distribution frames, which will then be used for phase reconstruction using the Gerchberg-Saxton algorithm. The project consists of three main programs:
-1. Training Data Generator – A program responsible for creating training files for the neural network. RGB images are used to generate two intensity distributions and two phase distributions, which form the training dataset.
-2. CNN ResNet – An implementation of a convolutional neural network based on the ResNet architecture, used to generate one of the intensity distribution frames from input data.
-3. Phase Reconstruction Program – An implementation of the Gerchberg-Saxton algorithm and the Gabor method for phase reconstruction based on the generated intensity distributions.
+1. Training Data Generator – a program responsible for creating training files for the neural network. RGB images are used to generate two intensity distributions and two phase distributions, which form the training dataset.
+2. CNN ResNet – an implementation of a convolutional neural network based on the ResNet architecture, used to generate one of the intensity distribution frames from input data.
+3. Phase Reconstruction Program – an implementation of the Gerchberg-Saxton algorithm and the Gabor method for phase reconstruction based on the generated intensity distributions.
 This project serves as a foundation for further research in phase reconstruction in the context of digital holography and other optical techniques.
 
 ## Requirements
@@ -24,9 +24,9 @@ To run the project, you need to install the following packages:
 To install and run the project, follow these steps:
 1. Install PyCharm – download and install PyCharm, you can download it from the official site: [PyCharm Download](https://www.jetbrains.com/pycharm/download/)
 2. Copy the files from this repository – download or clone the repository to your device, then copy the files into 3 different directories corresponding to the three programs in the project:
-- program 1: Training Data Generator
-- program 2: CNN ResNet
-- program 3: Phase Reconstruction Methods
+- 1st program: Training Data Generator
+- 2nd program: CNN ResNet
+- 3rd program: Phase Reconstruction Methods
 3. Load the projects into PyCharm:
 - open PyCharm
 - choose the "Open" option and load each of the three folders as separate projects
