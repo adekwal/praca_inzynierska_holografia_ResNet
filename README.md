@@ -1,18 +1,59 @@
 # Phase reconstruction using a ResNet network
+
 ## Overview
-This repository contains three programs designed for phase reconstruction analysis in the context of digital holography. The programs include:
 
-1. Training Data Generator for Neural Network - Generates input data that will be used for training the neural network model.
-2. Convolutional Neural Network (CNN) Program - Trains a neural network model that is used to predict the second intensity frame based on the first one.
-3. Phase Reconstruction Program - Implements Gabor and Gerchberg-Saxton (GS) methods for phase reconstruction from the data obtained during measurements.
+This repository contains an implementation of a convolutional neural network (CNN) to generate one of two intensity distribution frames, which will then be used for phase reconstruction using the Gerchberg-Saxton algorithm. The project consists of three main programs:
+1. Training Data Generator – A program responsible for creating training files for the neural network. RGB images are used to generate two intensity distributions and two phase distributions, which form the training dataset.
+2. CNN ResNet – An implementation of a convolutional neural network based on the ResNet architecture, used to generate one of the intensity distribution frames from input data.
+3. Phase Reconstruction Program – An implementation of the Gerchberg-Saxton algorithm and the Gabor method for phase reconstruction based on the generated intensity distributions.
+This project serves as a foundation for further research in phase reconstruction in the context of digital holography and other optical techniques.
 
-The aim of this program is to compare the quality of phase reconstruction achieved by traditional methods versus the neural network. We assess how the capabilities of the neural network can improve the accuracy of phase reconstruction, where the network generates the second intensity frame, which is then input into the GS algorithm for the final phase reconstruction.
+## Requirements
 
-##Requirements
-- Python
-- tensorflow
-- NumPy
-- Matplotlib
+To run the project, you need to install the following packages:
+- python (3.12 was used)
+- tensorflow (2.18 was used)
+- numpy
+- matplotlib
 - imageio
 - scipy
 - h5py
+
+## Instalation
+
+To install and run the project, follow these steps:
+1. Install PyCharm – Download and install PyCharm, one of the best editors for Python projects. You can download it from the official site: [PyCharm Download](https://www.jetbrains.com/pycharm/download/)
+2. Copy the files from this repository – Download or clone the repository to your device. Then, copy the files into 3 different directories corresponding to the three programs in the project:
+- program 1: Training Data Generator
+- program 2: CNN ResNet
+- program 3: Phase Reconstruction Methods
+3. Load the projects into PyCharm:
+- open PyCharm
+- choose the "Open" option and load each of the three folders as separate projects
+- make sure that all dependencies (listed in the "Requirements" section) are correctly installed for each project
+
+## Usage
+
+### Prepare the database
+
+1. Download the image dataset that you want to process. This repository uses the Kaggle dataset [Flowers Recognition](https://www.kaggle.com/datasets/alxmamaev/flowers-recognition)
+2. Unpack the downloaded file and place all the images into one common directory
+
+### Define user setup
+
+1. Prepare the training data:
+- open the data generator script
+- choose the appropriate path to the image directory and the location where the training file will be saved
+- define the output file name and type, as well as the save location
+- set the physical parameters for the simulation (e.g., wavelength, distance, etc.)
+- select the number of images for which the data should be prepared
+- run the script to generate the training data
+2. Run the ResNet:
+- open the script containing the ResNet implementation
+- provide the path to the training file generated in the previous step
+- run the script to train the model
+3. Reconstruct the phase:
+- open the script implementing the Gerchberg-Saxton (GS) algorithm
+- provide the path to the saved neural network (the model after training)
+- specify the paths to the measurement, training, or simulation data files, including intensity distributions from two planes
+- run the script to perform phase reconstruction
