@@ -5,7 +5,7 @@ from scipy.ndimage import gaussian_filter, zoom
 def generate_data(ph0, delta_ph_max, z1, z2, lambda_, dx, nx, ny, px, py):
     sigma = 85
 
-    ## Generation of object wave
+    # Generation of object wave
     delta_ph = delta_ph_max
     #delta_ph = (2*np.random.rand()-1)*delta_ph_max
     ph0 = ph0[10:-10, 10:-10]
@@ -37,7 +37,7 @@ def generate_data(ph0, delta_ph_max, z1, z2, lambda_, dx, nx, ny, px, py):
     ph0 = ph0 - np.median(ph0)
     u_obj = np.exp(1j * ph0)
 
-    ## Simulation of two defocused intensity measurements
+    # Simulation of two defocused intensity measurements
     u1 = propagate_plane_wave(u_obj, z1, 1, lambda_, dx, dx)
     u2 = propagate_plane_wave(u_obj, z2, 1, lambda_, dx, dx)
 

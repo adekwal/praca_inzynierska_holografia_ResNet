@@ -4,12 +4,12 @@ import tensorflow as tf
 import h5py
 
 model = tf.keras.models.load_model(
-    r"C:\Users\Monika Walocha\Desktop\adek files\_python\ResNet\trained_models\epoch_10_model_checkpoint.keras"
+    r"C:\Users\Monika Walocha\Desktop\adek files\_python\ResNet\trained_models\epoch_10_model_checkpoint.keras" # set the path to trained ResNet model
 )
 
 try:
     with h5py.File(
-        r"C:/Users/Monika Walocha/Desktop/adek files/_python/praca_inzynierska/dane50_compressed.h5",
+        r"C:/Users/Monika Walocha/Desktop/adek files/_python/praca_inzynierska/dane50_compressed.h5", # set the path to training dataset file
         "r",
     ) as file:
         inputs = file["inputs"][:]

@@ -1,12 +1,3 @@
-"""
-ResNet-20 model
-There are 3 groups. Each group has n=3 residual blocks. Each residual block has 2 Conv2D layers.
-This relates to total number of 3*2*n + 2 = 20 layers.
-The authors claim that the code worked only for SGD, not Adam or SGDW!
-source:
-https://github.com/christianversloot/machine-learning-articles/blob/main/how-to-build-a-resnet-from-scratch-with-tensorflow-2-and-keras.md
-how to get Tesnorboard type in terminal: python -m tensorboard.main --logdir=logs/
-"""
 import os
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '1'
@@ -23,7 +14,7 @@ import shutil
 import h5py
 import pickle
 
-dataset_file = r"C:/Users/Monika Walocha/Desktop/adek files/_python/praca_inzynierska/dane50_compressed.h5"
+dataset_file = r"C:/Users/Monika Walocha/Desktop/adek files/_python/praca_inzynierska/dane50_compressed.h5" # set the path to training dataset file
 global_dataset = None
 
 def get_dataset_size(file_path):
@@ -41,8 +32,8 @@ def model_configuration():
 
     # Generic configuration
     width, height, channels = 512, 512, 1
-    batch_size = 1
-    validation_split = 0.2
+    batch_size = 1 # number of samples being analyzed at once
+    validation_split = 0.2 # 80% of the dataset will be used for training, 10% for validation and 10% for the test
     verbose = 1
     n = 3  # number of residual blocks in a single group
     init_fm_dim = 16  # initial number of feature maps; doubles as the feature map size halves
@@ -53,7 +44,7 @@ def model_configuration():
     val_size = validation_split * num_samples
 
     # Calculate parameters
-    maximum_number_iterations = 160  # maximum number of iterations as per the paper (32000)
+    maximum_number_iterations = 160000
     steps_per_epoch = np.ceil(train_size / batch_size).astype(int)
     val_steps_per_epoch = np.ceil(val_size / batch_size).astype(int)
     epochs = tensorflow.cast(
@@ -85,10 +76,6 @@ def model_configuration():
     )
 
     # Model checkpoint callback for saving weights
-    # checkpoint = ModelCheckpoint(
-    #     os.path.join(os.getcwd(), r'trained_models\epoch_{epoch:02d}_model_checkpoint.keras'),
-    #     save_freq="epoch"
-    # )
     checkpoint = ModelCheckpoint(
         os.path.join(os.getcwd(), 'trained_models', 'epoch_{epoch:02d}_model_checkpoint.keras'),
         save_freq="epoch"
@@ -231,9 +218,6 @@ def preprocessed_dataset():
 
 
 def residual_block(x, number_of_filters):
-    """
-    Residual block with
-    """
     # Retrieve initializer
     config = model_configuration()
     initializer = config.get("initializer")
@@ -256,14 +240,10 @@ def residual_block(x, number_of_filters):
     # Nonlinearly activate the result
     x = Activation("relu")(x)
 
-    # Return the result
     return x
 
 
 def ResidualBlocks(x):
-    """
-    Set up the residual blocks.
-    """
     # Retrieve values
     config = model_configuration()
 
@@ -377,23 +357,10 @@ def train_model(model, train_batches, validation_batches):
                   validation_steps=config.get("val_steps_per_epoch") #
                          )
 
-    # loss = hist_obj.history['loss']
-    # val_loss = hist_obj.history['val_loss']
-    # plt.plot(np.log(loss), label='Training Loss')
-    # plt.plot(np.log(val_loss), label='Validation Loss')
-    # plt.legend(loc='upper right')
-    # plt.ylabel('Log loss')
-    # plt.title('Training and Validation Loss')
-    # plt.xlabel('epoch')
-    # plt.show()
-
     return model, hist_obj
 
 
 def evaluate_model(model, test_batches):
-    """
-    Evaluate a trained model.
-    """
     # Evaluate model
     score = model.evaluate(test_batches, verbose=1)
     print(f'Test loss: {score}')
@@ -421,10 +388,6 @@ def show_training_progress(hist_obj):
 
 
 def training_process():
-    """
-    Run the training process for the ResNet model.
-    """
-
     # Get dataset
     train_batches, validation_batches, test_batches = preprocessed_dataset()
 

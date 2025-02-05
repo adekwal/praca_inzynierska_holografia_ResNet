@@ -13,31 +13,31 @@ from prepare_image import resize, crop
 from calculate import calc_RMSE, calc_SSIM
 
 # Configuration
-h5_path = r"C:\Users\Monika Walocha\Desktop\adek files\_python\praca_inzynierska\dane50_compressed.h5"
-# h5_path = r"C:\Users\Monika Walocha\Desktop\adek files\_python\praca_inzynierska\dane_testowe\kulki.h5"
-# h5_path = r"C:\Users\Monika Walocha\Desktop\adek files\_python\praca_inzynierska\dane_testowe\dane_eksperymentalne.h5"
-model_path = r"C:\Users\Monika Walocha\Desktop\adek files\_python\ResNet\trained_models_tf_gpu_50epok\epoch_50_model_checkpoint.keras"
+h5_path = r"C:\Users\Monika Walocha\Desktop\adek files\_python\praca_inzynierska\dane50_compressed.h5" # path to training dataset file
+# h5_path = r"C:\Users\Monika Walocha\Desktop\adek files\_python\praca_inzynierska\dane_testowe\kulki.h5" # path to kulki.h5 file
+# h5_path = r"C:\Users\Monika Walocha\Desktop\adek files\_python\praca_inzynierska\dane_testowe\dane_eksperymentalne.h5" # path to dane_eksperymentalne.h5 file
+model_path = r"C:\Users\Monika Walocha\Desktop\adek files\_python\ResNet\trained_models_tf_gpu_50epok\epoch_50_model_checkpoint.keras" # path to trained ResNet model
 
 # User setup
-use_training_set = True # set True if using training set because of different label
+use_training_set = True # set True if using training set because of different labels
 image_index = 0
 
 # Define simulation parameters
-iter_max = 100
+iter_max = 100 # define the number of iterations in GS algorithm
 ph_init_mode = "null"
 regularize = 1
 constraint = "A"
 
-nx = int(1024 / 2)
+nx = int(1024 / 2) # cropped image size
 ny = int(1024 / 2)
 px = 1024 # padded image size
 py = 1024
-x_pos = 500
+x_pos = 500 # if processing image greater than 512x512 - crop image by these coordinates
 y_pos = 500
 
 dx = 2.4
 dy = dx
-n0 = 1
+n0 = 1 # refractive index
 wavelength = 0.561
 delta_z = 8.2222e3
 z_sample_ccd1 = 3.5578e3
@@ -62,7 +62,7 @@ if not use_training_set:
         i2 = resize(i2, nx, ny, px, py, x_pos, y_pos)
 
 # Delete last axis
-i1 = np.squeeze(i1)
+i1 = np.squeeze(i1) # reduce the image dimensions from (512x512x1) to (512x512)
 i2 = np.squeeze(i2)
 if use_training_set:
     ph1 = np.squeeze(ph1)
@@ -74,8 +74,8 @@ i2_predicted = model.predict(i1[np.newaxis, :, :, np.newaxis])[0, :, :, 0]
 print("Image has been generated")
 print("Please wait...")
 
-i2_predicted = i2_predicted[10:-10, 10:-10]
-i2_predicted = np.pad(i2_predicted, pad_width=10, mode='edge')
+i2_predicted = i2_predicted[10:-10, 10:-10] # cut 10 px each side to eliminate black spot
+i2_predicted = np.pad(i2_predicted, pad_width=10, mode='edge') # add pixels to fulfill the image size
 
 # Padding to 1024x1024
 pad_x = (int(py / 2 - ny / 2), int(py / 2 - ny / 2))
@@ -177,7 +177,7 @@ plot_charts(ph0_diff_, ph0_diff_titles_,
             suptitle="Różnica między zrekonstruowanym rozkładem fazy\na zrekonstruowanym rozkładem z metody Gerchberga-Saxtona",
             cbar_label="faza [rad]")
 
-
+# Show results table
 results = [
     ["", "RMSE", "SSIM"],
     ["Gabor", calc_RMSE(ph1_perfect_cropped, ph_rec_gabor_z1_cropped), calc_SSIM(ph1_perfect_cropped, ph_rec_gabor_z1_cropped)],

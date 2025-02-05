@@ -1,6 +1,6 @@
 import numpy as np
 
-def resize(image, nx, ny, px, py, x_pos, y_pos):
+def resize(image, x_pos, y_pos):
     image = image[x_pos:x_pos + 512, y_pos:y_pos + 512]
 
     # Convert to grayscale if needed

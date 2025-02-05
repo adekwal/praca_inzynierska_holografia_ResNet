@@ -6,25 +6,25 @@ import h5py
 from training_data_gen import generate_data
 
 # Define simulation parameters
-data_path = r"C:\Users\Monika Walocha\Desktop\adek files\_python\praca_inzynierska\flowers"
-nx = int(1024 / 2)
+data_path = r"C:\Users\Monika Walocha\Desktop\adek files\_python\praca_inzynierska\flowers" # define path to directory with images
+nx = int(1024 / 2) # cropped image size
 ny = int(1024 / 2)
 px = 1024  # padded image size
 py = 1024
 dx = 2.4
 dy = dx
-n0 = 1
+n0 = 1 # refractive index
 lambda_ = 0.561
 delta_z = 8.2222e3
-z1 = 3.5578e3
+z1 = 3.5578e3 # distance to the 1st plane
 z2 = z1 + delta_z
 delta_ph_max = np.pi / 2
 
 # Define user setup
-output_file = 'dane'  # define the filename
+output_file = 'dane'  # define the output filename
 img_count = 50  # choose the number of images you want to process
 save_as_npz = False # choose the valid datafile format
-save_as_h5 = True
+save_as_h5 = True # highly recommended as the ResNet uses H5 file
 save_disc_space = False  # compress data file if needed
 show_images = False  # show generated data
 
