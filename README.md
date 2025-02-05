@@ -12,13 +12,25 @@ This project serves as a foundation for further research in phase reconstruction
 
 To run the project, you need to install the following packages:
 - python (3.12 was used)
-- tensorflow (2.18 was used)
+
+1. Training Data Generator:
 - numpy
-- matplotlib
-- scikit image
-- imageio
 - scipy
 - h5py
+- matplotlib
+- imageio
+2. CNN ResNet:
+- tensorflow (2.18 was used)
+- numpy
+- h5py
+- matplotlib
+3. Phase Reconstruction Program:
+- tensorflow (2.18 was used)
+- numpy
+- h5py
+- matplotlib
+- scikit-image
+- tabulate
 
 ## Instalation
 
