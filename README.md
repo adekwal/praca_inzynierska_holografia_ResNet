@@ -15,6 +15,7 @@ To run the project, you need to install the following packages:
 - tensorflow (2.18 was used)
 - numpy
 - matplotlib
+- scikit image
 - imageio
 - scipy
 - h5py
