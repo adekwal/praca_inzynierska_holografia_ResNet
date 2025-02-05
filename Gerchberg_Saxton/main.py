@@ -58,8 +58,8 @@ with h5py.File(h5_path, 'r') as f:
 
 if not use_training_set:
     if i1.shape != (512, 512):
-        i1 = resize(i1, nx, ny, px, py, x_pos, y_pos)
-        i2 = resize(i2, nx, ny, px, py, x_pos, y_pos)
+        i1 = resize(i1, x_pos, y_pos)
+        i2 = resize(i2, x_pos, y_pos)
 
 # Delete last axis
 i1 = np.squeeze(i1) # reduce the image dimensions from (512x512x1) to (512x512)
